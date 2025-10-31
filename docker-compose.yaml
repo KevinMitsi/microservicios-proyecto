@@ -1,0 +1,160 @@
+version: "3.8"
+
+services:
+  # ============================================
+  # Mensajería - RabbitMQ
+  # ============================================
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "15672:15672"  # UI
+      - "5672:5672"
+    environment:
+      RABBITMQ_DEFAULT_USER: admin
+      RABBITMQ_DEFAULT_PASS: admin
+
+  # ============================================
+  # Integración Continua - Jenkins
+  # ============================================
+  jenkins:
+    image: jenkins/jenkins:lts
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./jenkins_home:/var/jenkins_home
+
+  # ============================================
+  # Auth Service (Spring Boot + PostgreSQL)
+  # ============================================
+  msvc-auth:
+    build: ./msvc-auth
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db-auth:5432/authdb
+      - SPRING_DATASOURCE_USERNAME=authuser
+      - SPRING_DATASOURCE_PASSWORD=authpass
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+    depends_on:
+      - rabbitmq
+      - db-auth
+
+  db-auth:
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: authuser
+      POSTGRES_PASSWORD: authpass
+    volumes:
+      - ./data/db-auth:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+
+  # ============================================
+  # Profiles Service (FastAPI + MongoDB)
+  # ============================================
+  msvc-profiles:
+    build: ./msvc-profiles
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGO_URL=mongodb://profilesuser:profilespass@db-profiles:27017/profilesdb?authSource=admin
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+    depends_on:
+      - rabbitmq
+      - db-profiles
+
+  db-profiles:
+    image: mongo:7
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: profilesuser
+      MONGO_INITDB_ROOT_PASSWORD: profilespass
+      MONGO_INITDB_DATABASE: profilesdb
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./data/db-profiles:/data/db
+
+  # ============================================
+  # Notifications Service (Node.js + Redis)
+  # ============================================
+  msvc-notifications:
+    build: ./msvc-notifications
+    ports:
+      - "3002:3002"
+    environment:
+      - REDIS_URL=redis://db-notifications:6379
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+    depends_on:
+      - rabbitmq
+      - db-notifications
+
+  db-notifications:
+    image: redis:7
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/db-notifications:/data
+
+  # ============================================
+  # API Gateway (NestJS)
+  # ============================================
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+    depends_on:
+      - msvc-auth
+      - msvc-profiles
+      - msvc-notifications
+
+  # ============================================
+  # Observabilidad - ELK Stack
+  # ============================================
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+    volumes:
+      - ./data/elasticsearch:/usr/share/elasticsearch/data
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.10.2
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+
+  # ============================================
+  # Monitoreo - Prometheus + Grafana
+  # ============================================
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+
+# ============================================
+# Volúmenes persistentes
+# ============================================
+volumes:
+  db-auth-data:
+  db-profiles-data:
+  db-notifications-data:
+  elastic-data:
+  jenkins-data:
