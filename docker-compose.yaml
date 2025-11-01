@@ -27,19 +27,21 @@ services:
   # Auth Service (Spring Boot + PostgreSQL)
   # ============================================
   msvc-auth:
+    container_name: msvc-auth
+    restart: on-failure
     build: ./msvc-auth
     ports:
       - "8081:8081"
+    env_file:
+      - ./msvc-auth/.env
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db-auth:5432/authdb
-      - SPRING_DATASOURCE_USERNAME=authuser
-      - SPRING_DATASOURCE_PASSWORD=authpass
       - RABBITMQ_URL=amqp://admin:admin@rabbitmq
     depends_on:
-      - rabbitmq
+    #  - rabbitmq
       - db-auth
 
   db-auth:
+    container_name: db-auth
     image: postgres:15
     restart: always
     environment:
