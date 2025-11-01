@@ -1,3 +1,21 @@
 spring:
   application:
     name: msvc-auth
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+jwt:
+  secret: ${JWT_SECRET:VGhpcy1pcy1qd3Qtc2VjcmV0LXNob3VsZC1iZS1iYXNlNjQtMzJieXRlcy0xMjM0NTY3ODkwMTIzNDU2}
+  issuer: msvc-auth
+  expiration-minutes: 60
+
+server:
+  port: 8081
