@@ -12,6 +12,8 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
+  admin:
+    password: ${ADMIN_PASSWORD:admin1234}
 jwt:
   secret: ${JWT_SECRET:VGhpcy1pcy1qd3Qtc2VjcmV0LXNob3VsZC1iZS1iYXNlNjQtMzJieXRlcy0xMjM0NTY3ODkwMTIzNDU2}
   issuer: msvc-auth

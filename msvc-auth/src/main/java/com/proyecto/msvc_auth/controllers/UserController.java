@@ -7,7 +7,6 @@ import com.proyecto.msvc_auth.DTO.UserUpdateRequest;
 import com.proyecto.msvc_auth.Entity.Role;
 import com.proyecto.msvc_auth.Entity.UserEntity;
 
-import com.proyecto.msvc_auth.security.CurrentUserService;
 import com.proyecto.msvc_auth.services.UserService;
 
 import lombok.RequiredArgsConstructor;
@@ -16,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -26,7 +26,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
-    private final CurrentUserService currentUserService;
 
     @PostMapping("/users")
     public ResponseEntity<UserEntity> registerUser(@RequestBody UserRegistrationRequest request) {
@@ -109,12 +108,8 @@ public class UserController {
     }
 
     @PutMapping("/users/{id}/roles")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserEntity> updateUserRoles(@PathVariable Long id, @RequestBody Set<Role> roles) {
-        String currentUsername = Objects.requireNonNull(CurrentUserService.getCurrentUser()).getUsername();
-        Optional<UserEntity> currentUserOpt = userService.getUserByUsername(currentUsername);
-        if (currentUserOpt.isEmpty() || !currentUserOpt.get().hasRole(Role.ADMIN)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No tienes permisos para modificar roles");
-        }
         UserEntity updatedUser = userService.updateUserRoles(id, roles);
         return ResponseEntity.ok(updatedUser);
     }

@@ -81,7 +81,7 @@ public class JwtUtils {
                 .getSubject();
     }
 
-    // Método adicional para obtener claims específicos si los necesitas
+
     public Claims getClaimsFromToken(String token) {
         return Jwts.parser()
                 .verifyWith(secretKey)
