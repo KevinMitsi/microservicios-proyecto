@@ -5,6 +5,7 @@ services:
   # Mensajería - RabbitMQ
   # ============================================
   rabbitmq:
+    container_name: rabbitmq
     image: rabbitmq:3-management
     ports:
       - "15672:15672"  # UI
@@ -35,9 +36,9 @@ services:
     env_file:
       - ./msvc-auth/.env
     environment:
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
     depends_on:
-    #  - rabbitmq
+      - rabbitmq
       - db-auth
 
   db-auth:
@@ -62,7 +63,7 @@ services:
       - "8000:8000"
     environment:
       - MONGO_URL=mongodb://profilesuser:profilespass@db-profiles:27017/profilesdb?authSource=admin
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
     depends_on:
       - rabbitmq
       - db-profiles
@@ -83,17 +84,20 @@ services:
   # Notifications Service (Node.js + Redis)
   # ============================================
   msvc-notifications:
+    container_name: msvc-notifications
+    restart: on-failure
     build: ./msvc-notifications
     ports:
-      - "3002:3002"
+      - "4000:4000"
     environment:
       - REDIS_URL=redis://db-notifications:6379
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
     depends_on:
       - rabbitmq
       - db-notifications
 
   db-notifications:
+    container_name: db-notifications
     image: redis:7
     restart: always
     ports:
@@ -109,7 +113,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
     depends_on:
       - msvc-auth
       - msvc-profiles
