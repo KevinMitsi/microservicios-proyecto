@@ -1,4 +1,3 @@
-version: "3.8"
 
 services:
   # ============================================
@@ -13,6 +12,40 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: admin
       RABBITMQ_DEFAULT_PASS: admin
+    networks:
+      - microservices-net
+
+  # ============================================
+  # Logging (OpenSearch + Logstash)
+  # ============================================
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    networks:
+      - microservices-net
+
+  logstash:
+    build: ./msvc-logs
+    container_name: logstash
+    restart: on-failure
+    depends_on:
+      - opensearch
+      - rabbitmq
+    ports:
+      - "5044:5044"
+    networks:
+      - microservices-net
 
   # ============================================
   # Integración Continua - Jenkins
@@ -23,6 +56,8 @@ services:
       - "8080:8080"
     volumes:
       - ./jenkins_home:/var/jenkins_home
+    networks:
+      - microservices-net
 
   # ============================================
   # Auth Service (Spring Boot + PostgreSQL)
@@ -40,6 +75,8 @@ services:
     depends_on:
       - rabbitmq
       - db-auth
+    networks:
+      - microservices-net
 
   db-auth:
     container_name: db-auth
@@ -53,6 +90,8 @@ services:
       - ./data/db-auth:/var/lib/postgresql/data
     ports:
       - "5433:5432"
+    networks:
+      - microservices-net
 
   # ============================================
   # Profiles Service (FastAPI + MongoDB)
@@ -67,6 +106,8 @@ services:
     depends_on:
       - rabbitmq
       - db-profiles
+    networks:
+      - microservices-net
 
   db-profiles:
     image: mongo:7
@@ -79,6 +120,8 @@ services:
       - "27018:27017"
     volumes:
       - ./data/db-profiles:/data/db
+    networks:
+      - microservices-net
 
   # ============================================
   # Notifications Service (Node.js + Redis)
@@ -95,6 +138,8 @@ services:
     depends_on:
       - rabbitmq
       - db-notifications
+    networks:
+      - microservices-net
 
   db-notifications:
     container_name: db-notifications
@@ -104,60 +149,26 @@ services:
       - "6379:6379"
     volumes:
       - ./data/db-notifications:/data
+    networks:
+      - microservices-net
 
-  # ============================================
-  # API Gateway (NestJS)
-  # ============================================
-  api-gateway:
-    build: ./api-gateway
-    ports:
-      - "3000:3000"
-    environment:
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
-    depends_on:
-      - msvc-auth
-      - msvc-profiles
-      - msvc-notifications
-
-  # ============================================
-  # Observabilidad - ELK Stack
-  # ============================================
-  elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
-    environment:
-      - discovery.type=single-node
-    ports:
-      - "9200:9200"
-    volumes:
-      - ./data/elasticsearch:/usr/share/elasticsearch/data
-
-  kibana:
-    image: docker.elastic.co/kibana/kibana:8.10.2
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: opensearch-dashboards
     ports:
       - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
     depends_on:
-      - elasticsearch
+      - opensearch
+    networks:
+      - microservices-net
 
-  # ============================================
-  # Monitoreo - Prometheus + Grafana
-  # ============================================
-  prometheus:
-    image: prom/prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+networks:
+  microservices-net:
+    driver: bridge
 
-  grafana:
-    image: grafana/grafana
-    ports:
-      - "3001:3000"
-    depends_on:
-      - prometheus
-
-# ============================================
-# Volúmenes persistentes
-# ============================================
 volumes:
   db-auth-data:
   db-profiles-data:
