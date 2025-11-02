@@ -1,5 +1,0 @@
-pika
-opensearch-py
-pytest
-requests
-
