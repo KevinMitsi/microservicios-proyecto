@@ -14,10 +14,10 @@ router.get('/:userId/unread', notificationController.getUnreadNotifications);
 router.get('/:userId/count', notificationController.countUnread);
 
 // Marcar notificación como leída
-router.put('/:notificationId/read', notificationController.markAsRead);
+router.patch('/:notificationId/read', notificationController.markAsRead);
 
 // Marcar todas las notificaciones como leídas
-router.put('/:userId/read-all', notificationController.markAllAsRead);
+router.patch('/:userId/read-all', notificationController.markAllAsRead);
 
 // Eliminar notificación
 router.delete('/:notificationId', notificationController.deleteNotification);

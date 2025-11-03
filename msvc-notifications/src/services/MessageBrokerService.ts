@@ -72,13 +72,17 @@ class MessageBrokerService {
         if (msg) {
           try {
             const content = msg.content.toString();
-            const event: NotificationEvent = JSON.parse(content);
-
+            let event: any = JSON.parse(content);
+            // Log para depuración: imprime el evento completo recibido
+            console.log('🔍 Evento recibido (raw):', content);
+            console.log('🔍 Evento recibido (objeto):', event);
+            // Adaptar eventType a type si es necesario
+            if (!event.type && event.eventType) {
+              event.type = event.eventType;
+            }
             console.log(`📨 Received event: ${event.type} for user: ${event.userId}`);
-
             // Procesar el evento
             await this.notificationService.processEvent(event);
-
             // Confirmar el mensaje
             this.channel!.ack(msg);
             console.log(`✅ Event processed successfully: ${event.type}`);
