@@ -1,0 +1,41 @@
+{
+  "name": "msvc-logs-tests",
+  "version": "1.0.0",
+  "description": "Pruebas automatizadas para el microservicio de logs",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest tests/integration",
+    "test:unit": "jest tests/unit",
+    "start": "node src/index.js",
+    "start:dev": "nodemon src/index.js",
+    "logs:direct": "node src/index.js",
+    "test:health": "node scripts/health-check.js"
+  },
+  "dependencies": {
+    "amqplib": "^0.10.3",
+    "axios": "^1.6.0"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "@types/jest": "^29.5.8",
+    "supertest": "^6.3.3",
+    "@opensearch-project/opensearch": "^2.4.0",
+    "nodemon": "^3.0.1"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ],
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/**/*.test.js"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "lcov", "html"]
+  }
+}

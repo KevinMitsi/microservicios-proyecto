@@ -1,0 +1,30 @@
+# Dockerfile para el procesador directo de logs (reemplaza Logstash)
+FROM node:18-alpine
+
+# Crear directorio de trabajo
+WORKDIR /app
+
+# Copiar archivos de configuración
+COPY package.json ./
+COPY src/ ./src/
+
+# Instalar dependencias
+RUN npm install --only=production
+
+# Configurar usuario no root para seguridad
+RUN addgroup -g 1001 -S logprocessor && \
+    adduser -S logprocessor -u 1001 -G logprocessor
+
+USER logprocessor
+
+# Exponer puerto para health checks (opcional)
+EXPOSE 3000
+
+# Variables de entorno por defecto
+ENV NODE_ENV=production
+ENV RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+ENV FLUENTBIT_URL=http://fluent-bit:9880
+ENV LOG_QUEUE_NAME=log_queue
+
+# Comando de inicio
+CMD ["node", "src/index.js"]
