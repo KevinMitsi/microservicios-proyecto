@@ -16,14 +16,6 @@ Este proyecto implementa una arquitectura de microservicios con logging centrali
 Microservicios -> RabbitMQ -> Procesador Directo -> FluentBit -> OpenSearch
 ```
 
-### Ventajas de FluentBit sobre Logstash:
-- ✅ **Más liviano**: Menor uso de memoria y CPU
-- ✅ **Mejor performance**: Mayor throughput de procesamiento
-- ✅ **Fácil configuración**: Sintaxis más simple
-- ✅ **Múltiples outputs**: Puede enviar a varios destinos simultáneamente
-- ✅ **Filtros avanzados**: Procesamiento avanzado de logs
-- ✅ **Métricas integradas**: Dashboard de métricas en tiempo real
-
 ## Pruebas Automatizadas - Sistema de Logs
 
 Se han implementado pruebas automatizadas completas para el microservicio de logs que validan:
