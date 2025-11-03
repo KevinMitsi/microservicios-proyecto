@@ -58,9 +58,13 @@ services:
   # Profiles Service (FastAPI + MongoDB)
   # ============================================
   msvc-profiles:
+    container_name: msvc-profiles
     build: ./msvc-profiles
+    env_file:
+      - ./msvc-profiles/.env
+    restart: on-failure
     ports:
-      - "8000:8000"
+      - "8082:8082"
     environment:
       - MONGO_URL=mongodb://profilesuser:profilespass@db-profiles:27017/profilesdb?authSource=admin
       - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
@@ -69,6 +73,7 @@ services:
       - db-profiles
 
   db-profiles:
+    container_name: db-profiles
     image: mongo:7
     restart: always
     environment:
@@ -123,6 +128,7 @@ services:
   # Observabilidad - ELK Stack
   # ============================================
   elasticsearch:
+    container_name: elasticsearch
     image: docker.elastic.co/elasticsearch/elasticsearch:8.10.2
     environment:
       - discovery.type=single-node
@@ -142,6 +148,7 @@ services:
   # Monitoreo - Prometheus + Grafana
   # ============================================
   prometheus:
+    container_name: prometheus
     image: prom/prometheus
     ports:
       - "9090:9090"
@@ -149,6 +156,7 @@ services:
       - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
 
   grafana:
+    container_name: grafana
     image: grafana/grafana
     ports:
       - "3001:3000"
