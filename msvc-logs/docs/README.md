@@ -7,6 +7,7 @@ Este directorio contiene la documentación completa del sistema de logging con F
 ### Principales
 - [`README.md`](../README.md) - Documentación principal del sistema
 - [`README-TESTS.md`](../README-TESTS.md) - Guía completa de pruebas
+- [`GUIA-CONFIGURACION.md`](./GUIA-CONFIGURACION.md) - Guía de configuración paso a paso (Windows/Docker)
 
 ### Configuración
 - [`fluent-bit.conf`](../fluent-bit.conf) - Configuración de FluentBit
@@ -47,6 +48,6 @@ curl http://localhost:9200  # Estado OpenSearch
 ## 🆘 Soporte
 
 Para problemas o preguntas:
-1. Revisar [README-TESTS.md](../README-TESTS.md) para troubleshooting
-2. Verificar logs: `docker logs fluent-bit`
-3. Ejecutar health checks: `npm run test:health`
+1. Revisa la [Guía de Configuración](./GUIA-CONFIGURACION.md) para pasos y troubleshooting
+2. Verifica logs: `docker logs fluent-bit`
+3. Ejecuta health checks: `npm run test:health`

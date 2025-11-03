@@ -11,7 +11,8 @@
     "test:unit": "jest tests/unit",
     "start": "node src/index.js",
     "start:dev": "nodemon src/index.js",
-    "logs:direct": "node src/index.js"
+    "logs:direct": "node src/index.js",
+    "test:health": "node scripts/health-check.js"
   },
   "dependencies": {
     "amqplib": "^0.10.3",
@@ -38,4 +39,3 @@
     "coverageReporters": ["text", "lcov", "html"]
   }
 }
-
