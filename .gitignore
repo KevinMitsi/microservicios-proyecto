@@ -108,6 +108,10 @@ uploads/
 storage/
 run/
 
+# Jenkins
+jenkins_home/
+.jenkins/
+
 # =====================================
 # TESTING / REPORTES
 # =====================================
