@@ -7,11 +7,13 @@ import com.proyecto.msvc_auth.DTO.UserUpdateRequest;
 import com.proyecto.msvc_auth.Entity.PasswordResetToken;
 import com.proyecto.msvc_auth.Entity.Role;
 import com.proyecto.msvc_auth.Entity.UserEntity;
+import com.proyecto.msvc_auth.models.UserEvent;
 import com.proyecto.msvc_auth.exceptions.InvalidCredentialsException;
 import com.proyecto.msvc_auth.exceptions.UserAlreadyExistException;
 import com.proyecto.msvc_auth.repository.PasswordTokenRepository;
 import com.proyecto.msvc_auth.repository.UserRepository;
 import com.proyecto.msvc_auth.security.JwtUtils;
+import com.proyecto.msvc_auth.services.UserEventService;
 import com.proyecto.msvc_auth.services.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,25 +40,24 @@ public class UserServiceImpl implements UserService {
     private final PasswordTokenRepository tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final AuthenticationManager authenticationManager;
-//    private final UserEventService userEventService;
+    private final UserEventService userEventService;
     private final JwtUtils jwtUtils;
 
     @Value("${jwt.expiration-minutes:60}")
     private Integer jwtExpirationMinutes;
 
+    private void publishUserEvent(String eventType, UserEntity user, Map<String, Object> additionalData) {
+        UserEvent event = new UserEvent();
+        event.setEventType(eventType);
+        event.setUserId(user.getId());
+        event.setUsername(user.getUsername());
+        event.setEmail(user.getEmail());
+        event.setMobileNumber(user.getMobileNumber());
+        event.setTimestamp(LocalDateTime.now());
+        event.setAdditionalData(additionalData != null ? additionalData : new HashMap<>());
 
-//    private void publishUserEvent(String eventType, UserEntity user, Map<String, Object> additionalData) {
-//        UserEvent event = new UserEvent();
-//        event.setEventType(eventType);
-//        event.setUserId(user.getId());
-//        event.setUsername(user.getUsername());
-//        event.setEmail(user.getEmail());
-//        event.setMobileNumber(user.getMobileNumber());
-//        event.setTimestamp(LocalDateTime.now());
-//        event.setAdditionalData(additionalData != null ? additionalData : new HashMap<>());
-//
-//        userEventService.publishEvent(event);
-//    }
+        userEventService.publishEvent(event);
+    }
 
     // -------------------------
     // REGLAS DE NEGOCIO
@@ -73,7 +74,13 @@ public class UserServiceImpl implements UserService {
         }
 
         UserEntity user = mapUserEntity(registrationRequest);
+        Map<String, Object> data = new HashMap<>();
+        data.put("Registered", LocalDateTime.now());
+
+        publishUserEvent("register", user, data);
+
         return userRepository.save(user);
+
     }
 
     @Override
@@ -98,11 +105,11 @@ public class UserServiceImpl implements UserService {
             authResponse.setExpiresIn(jwtExpirationMinutes * 60);
             authResponse.setUser(user);
 
-//            // Publicar evento de login exitoso
-//            Map<String, Object> data = new HashMap<>();
-//            data.put("loginTime", LocalDateTime.now());
-//
-//            publishUserEvent("login", user, data);
+            // Publicar evento de login exitoso
+            Map<String, Object> data = new HashMap<>();
+            data.put("loginTime", LocalDateTime.now());
+
+            publishUserEvent("login", user, data);
 
             return authResponse;
         } catch (Exception e) {
@@ -126,12 +133,12 @@ public class UserServiceImpl implements UserService {
         PasswordResetToken resetToken = new PasswordResetToken(null, tokenStr, user.getId(), expiryDate);
         tokenRepository.save(resetToken);
 
-//        // Publicar evento de recuperación de contraseña
-//        Map<String, Object> data = new HashMap<>();
-//        data.put("token", tokenStr);
-//        data.put("expiry", expiryDate);
-//
-//        publishUserEvent("password-recovery", user, data);
+        // Publicar evento de recuperación de contraseña
+        Map<String, Object> data = new HashMap<>();
+        data.put("token", tokenStr);
+        data.put("expiry", expiryDate);
+
+        publishUserEvent("password-recovery", user, data);
     }
 
     @Override
@@ -159,11 +166,11 @@ public class UserServiceImpl implements UserService {
 
         tokenRepository.delete(resetToken);
 
-//        // Publicar evento de actualización de contraseña
-//        Map<String, Object> data = new HashMap<>();
-//        data.put("updateTime", LocalDateTime.now());
-//
-//        publishUserEvent("password-update", user, data);
+        // Publicar evento de actualización de contraseña
+        Map<String, Object> data = new HashMap<>();
+        data.put("updateTime", LocalDateTime.now());
+
+        publishUserEvent("password-update", user, data);
     }
 
     // -------------------------
@@ -186,15 +193,25 @@ public class UserServiceImpl implements UserService {
         if (updateRequest.getLastName() != null) user.setLastName(updateRequest.getLastName());
         if (updateRequest.getEmail() != null) user.setEmail(updateRequest.getEmail());
 
-        return userRepository.save(user);
+        UserEntity updatedUser = userRepository.save(user);
+        // Publicar evento de actualización de usuario
+        Map<String, Object> data = new HashMap<>();
+        data.put("updateTime", LocalDateTime.now());
+        publishUserEvent("user-update", updatedUser, data);
+        return updatedUser;
     }
 
     @Override
     @Transactional
     public void deleteUser(Long id) {
-        if (userRepository.existsById(id)) {
+        Optional<UserEntity> userOpt = userRepository.findById(id);
+        if (userOpt.isPresent()) {
             tokenRepository.deleteByUserId(id);
             userRepository.deleteById(id);
+            // Publicar evento de eliminación de usuario
+            Map<String, Object> data = new HashMap<>();
+            data.put("deleteTime", LocalDateTime.now());
+            publishUserEvent("user-delete", userOpt.get(), data);
         }
     }
 
