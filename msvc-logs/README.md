@@ -4,6 +4,8 @@
 
 Sistema de logging centralizado de alta performance usando **FluentBit** como procesador principal, diseñado para microservicios con arquitectura moderna.
 
+> Guía rápida de configuración: consulta "docs/GUIA-CONFIGURACION.md" para pasos detallados de puesta en marcha en Windows y Docker.
+
 ## 🏗️ Arquitectura
 
 ```
@@ -14,13 +16,6 @@ Microservicios → RabbitMQ → Procesador Directo → FluentBit → OpenSearch
                             Métricas (2020)
 ```
 
-## 📊 Ventajas de FluentBit
-
-### Performance Superior
-- **95% menos memoria**: ~450KB vs ~1GB de otras soluciones
-- **10x mejor throughput**: 100K vs 10K mensajes/segundo
-- **15x startup más rápido**: 2s vs 30s
-- **Menor latencia**: Procesamiento más eficiente
 
 ### Simplicidad Operacional
 - **Configuración clara**: Sintaxis INI simple
@@ -318,6 +313,7 @@ docker-compose restart rabbitmq
 
 - [Documentación de Pruebas](README-TESTS.md)
 - [Configuración de FluentBit](fluent-bit.conf)
+- [Guía de configuración detallada](docs/GUIA-CONFIGURACION.md)
 - [Scripts de Automatización](scripts/)
 
 ## 🤝 Contribución
