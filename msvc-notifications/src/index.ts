@@ -6,6 +6,7 @@ import RabbitMQConnection from './config/rabbitmq';
 import MessageBrokerService from './services/MessageBrokerService';
 import notificationRoutes from './routes/notificationRoutes';
 import healthRoutes from './routes/healthRoutes';
+import logger from './config/logger';
 
 const app = express();
 
@@ -32,7 +33,7 @@ app.get('/', (req, res) => {
 // Inicialización del servidor
 async function startServer() {
   try {
-    console.log('🚀 Starting Notifications Microservice...');
+    logger.info('🚀 Starting Notifications Microservice...');
 
     // Conectar a Redis
     const redisConnection = RedisConnection.getInstance();
@@ -50,25 +51,25 @@ async function startServer() {
     // Iniciar servidor Express
     const PORT = config.port;
     app.listen(PORT, () => {
-      console.log(`✅ Server running on port ${PORT}`);
-      console.log(`🌐 Environment: ${config.nodeEnv}`);
-      console.log(`📡 Redis URL: ${config.redisUrl}`);
-      console.log(`🐰 RabbitMQ URL: ${config.rabbitmqUrl}`);
-      console.log('✨ Notifications Microservice is ready!');
+      logger.info(`✅ Server running on port ${PORT}`);
+      logger.info(`🌐 Environment: ${config.nodeEnv}`);
+      logger.info(`📡 Redis URL: ${config.redisUrl}`);
+      logger.info(`🐰 RabbitMQ URL: ${config.rabbitmqUrl}`);
+      logger.info('✨ Notifications Microservice is ready!');
     });
 
     // Manejo de señales de terminación
     const gracefulShutdown = async (signal: string) => {
-      console.log(`\n${signal} received. Shutting down gracefully...`);
-      
+      logger.info(`\n${signal} received. Shutting down gracefully...`);
+
       try {
         await messageBrokerService.close();
         await rabbitMQConnection.disconnect();
         await redisConnection.disconnect();
-        console.log('✅ All connections closed');
+        logger.info('✅ All connections closed');
         process.exit(0);
       } catch (error) {
-        console.error('❌ Error during shutdown:', error);
+        logger.error('❌ Error during shutdown:', error);
         process.exit(1);
       }
     };
@@ -77,7 +78,7 @@ async function startServer() {
     process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    logger.error('❌ Failed to start server:', error);
     process.exit(1);
   }
 }
