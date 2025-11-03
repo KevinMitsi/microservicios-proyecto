@@ -16,7 +16,7 @@ services:
       - microservices-net
 
   # ============================================
-  # Logging (OpenSearch + Logstash)
+  # Logging (OpenSearch + FluentBit)
   # ============================================
   opensearch:
     image: opensearchproject/opensearch:2.11.0
@@ -35,17 +35,37 @@ services:
     networks:
       - microservices-net
 
-  logstash:
+  fluent-bit:
     build: ./msvc-logs
-    container_name: logstash
+    container_name: fluent-bit
     restart: on-failure
     depends_on:
       - opensearch
       - rabbitmq
     ports:
-      - "5044:5044"
+      - "2020:2020"  # Puerto para métricas HTTP
+      - "9880:9880"  # Puerto para HTTP input
+      - "24224:24224" # Puerto para forward input
     networks:
       - microservices-net
+
+  # Procesador directo de logs (RabbitMQ -> FluentBit)
+  direct-log-processor:
+    build:
+      context: ./msvc-logs
+      dockerfile: Dockerfile.direct
+    container_name: direct-log-processor
+    restart: on-failure
+    depends_on:
+      - fluent-bit
+      - rabbitmq
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - FLUENTBIT_URL=http://fluent-bit:9880
+      - LOG_QUEUE_NAME=log_queue
+    networks:
+      - microservices-net
+    # Comentar para deshabilitar el procesador directo
 
   # ============================================
   # Integración Continua - Jenkins
