@@ -1,12 +1,5 @@
 // Dynamic import for uuid to support ESM-only package in CommonJS
-let uuidv4: (() => string) | undefined;
-async function getUuidV4() {
-  if (!uuidv4) {
-    const uuidModule = await import('uuid');
-    uuidv4 = uuidModule.v4;
-  }
-  return uuidv4();
-}
+import { v4 as uuidv4 } from 'uuid';
 import RedisService from './RedisService';
 import { Notification, NotificationType, NotificationEvent } from '../interfaces/Notification';
 
@@ -28,7 +21,7 @@ class NotificationService {
     data?: any
   ): Promise<Notification> {
     const notification: Notification = {
-      id: await getUuidV4(),
+      id: uuidv4(),
       userId,
       type,
       title,
