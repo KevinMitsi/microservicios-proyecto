@@ -1,4 +1,3 @@
-
 services:
   # ============================================
   # Mensajería - RabbitMQ
@@ -71,11 +70,18 @@ services:
   # Integración Continua - Jenkins
   # ============================================
   jenkins:
-    image: jenkins/jenkins:lts
+    container_name: jenkins
+    build:
+      context: .
+      dockerfile: ci/jenkins.Dockerfile
     ports:
       - "8080:8080"
+    # Ejecutar como root para acceso al socket Docker (simplifica permisos)
+    user: root
     volumes:
       - ./jenkins_home:/var/jenkins_home
+      # Montar el socket de Docker (Docker Desktop con Linux containers)
+      - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - microservices-net
 

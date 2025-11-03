@@ -141,6 +141,23 @@ Para Linux/Mac:
 - [Sistema de Logging](msvc-logs/README.md): Documentación completa del sistema FluentBit
 - [Pruebas Automatizadas](msvc-logs/README-TESTS.md): Guía detallada de pruebas  
 - [Configuración FluentBit](msvc-logs/fluent-bit.conf): Pipeline de procesamiento de logs
-- [Scripts de Automatización](msvc-logs/scripts/): Herramientas multiplataforma
+- [CI/CD con Jenkins](docs/CI-CD.md): Pipeline y requisitos del agente
+- [Agregar nuevos servicios al flujo de logs](docs/AGREGAR-SERVICIO-LOGS.md): Guía paso a paso
 - [Docker Compose](docker-compose.yaml): Configuración completa de servicios
 
+## CI/CD con Jenkins (local)
+
+Para levantar Jenkins como parte de esta plataforma:
+
+```bash
+# Construir la imagen personalizada de Jenkins
+docker compose build jenkins
+
+# Iniciar Jenkins
+docker compose up -d jenkins
+
+# Leer la contraseña inicial
+docker exec -it jenkins cat /var/jenkins_home/secrets/initialAdminPassword
+```
+
+Luego vaya a `http://localhost:8080`, complete el onboarding y cree un Pipeline apuntando a este repo (detectar el `Jenkinsfile`). Más detalles en [docs/CI-CD.md](docs/CI-CD.md).
