@@ -7,11 +7,21 @@ import MessageBrokerService from './services/MessageBrokerService';
 import notificationRoutes from './routes/notificationRoutes';
 import healthRoutes from './routes/healthRoutes';
 import logger from './config/logger';
+import { register, collectDefaultMetrics } from 'prom-client';
+
+// Configurar métricas de Prometheus
+collectDefaultMetrics({ register });
 
 const app = express();
 
 // Middlewares
 app.use(json());
+
+// Endpoint de métricas de Prometheus
+app.get('/metrics', async (req, res) => {
+  res.set('Content-Type', register.contentType);
+  res.end(await register.metrics());
+});
 
 // Routes
 app.use('/api/notifications', notificationRoutes);
@@ -26,6 +36,7 @@ app.get('/', (req, res) => {
     endpoints: {
       health: '/health',
       notifications: '/api/notifications',
+      metrics: '/metrics',
     },
   });
 });

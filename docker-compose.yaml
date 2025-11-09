@@ -15,6 +15,110 @@ services:
       - microservices-net
 
   # ============================================
+  # Monitoreo - Prometheus & Grafana
+  # ============================================
+  prometheus:
+    container_name: prometheus
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    networks:
+      - microservices-net
+
+  grafana:
+    container_name: grafana
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+    depends_on:
+      - prometheus
+    networks:
+      - microservices-net
+
+  # Exporters para métricas de bases de datos
+  postgres-exporter:
+    container_name: postgres-exporter
+    image: prometheuscommunity/postgres-exporter:latest
+    ports:
+      - "9187:9187"
+    environment:
+      DATA_SOURCE_NAME: "postgresql://authuser:authpass@db-auth:5432/authdb?sslmode=disable"
+    depends_on:
+      - db-auth
+    networks:
+      - microservices-net
+
+  mongodb-exporter:
+    container_name: mongodb-exporter
+    image: percona/mongodb_exporter:0.40
+    ports:
+      - "9216:9216"
+    environment:
+      MONGODB_URI: "mongodb://profilesuser:profilespass@db-profiles:27017"
+    command:
+      - '--mongodb.direct-connect=true'
+      - '--mongodb.global-conn-pool=false'
+      - '--compatible-mode'
+    depends_on:
+      - db-profiles
+    networks:
+      - microservices-net
+
+  redis-exporter:
+    container_name: redis-exporter
+    image: oliver006/redis_exporter:latest
+    ports:
+      - "9121:9121"
+    environment:
+      REDIS_ADDR: "db-notifications:6379"
+    depends_on:
+      - db-notifications
+    networks:
+      - microservices-net
+
+  rabbitmq-exporter:
+    container_name: rabbitmq-exporter
+    image: kbudde/rabbitmq-exporter:latest
+    ports:
+      - "9419:9419"
+    environment:
+      RABBIT_URL: "http://rabbitmq:15672"
+      RABBIT_USER: "admin"
+      RABBIT_PASSWORD: "admin"
+    depends_on:
+      - rabbitmq
+    networks:
+      - microservices-net
+
+  node-exporter:
+    container_name: node-exporter
+    image: prom/node-exporter:latest
+    ports:
+      - "9100:9100"
+    command:
+      - '--path.rootfs=/host'
+    volumes:
+      - '/:/host:ro,rslave'
+    networks:
+      - microservices-net
+
+  # ============================================
   # Logging (OpenSearch + FluentBit)
   # ============================================
   opensearch:
@@ -42,13 +146,12 @@ services:
       - opensearch
       - rabbitmq
     ports:
-      - "2020:2020"  # Puerto para métricas HTTP
-      - "9880:9880"  # Puerto para HTTP input
-      - "24224:24224" # Puerto para forward input
+      - "2020:2020"
+      - "9880:9880"
+      - "24224:24224"
     networks:
       - microservices-net
 
-  # Procesador directo de logs (RabbitMQ -> FluentBit)
   direct-log-processor:
     build:
       context: ./msvc-logs
@@ -64,7 +167,6 @@ services:
       - LOG_QUEUE_NAME=log_queue
     networks:
       - microservices-net
-    # Comentar para deshabilitar el procesador directo
 
   # ============================================
   # Integración Continua - Jenkins
@@ -76,11 +178,9 @@ services:
       dockerfile: ci/jenkins.Dockerfile
     ports:
       - "8080:8080"
-    # Ejecutar como root para acceso al socket Docker (simplifica permisos)
     user: root
     volumes:
       - ./jenkins_home:/var/jenkins_home
-      # Montar el socket de Docker (Docker Desktop con Linux containers)
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - microservices-net
@@ -200,8 +300,5 @@ networks:
     driver: bridge
 
 volumes:
-  db-auth-data:
-  db-profiles-data:
-  db-notifications-data:
-  elastic-data:
-  jenkins-data:
+  prometheus-data:
+  grafana-data:
