@@ -1,0 +1,30 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'microservices-test'
+    environment: 'development'
+
+scrape_configs:
+  # Prometheus mismo
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Microservicio de Autenticación (Spring Boot)
+  - job_name: 'msvc-auth'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['msvc-auth:8081']
+        labels:
+          service: 'auth'
+          technology: 'spring-boot'
+
+  # PostgreSQL Exporter (para msvc-auth)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          database: 'authdb'
+

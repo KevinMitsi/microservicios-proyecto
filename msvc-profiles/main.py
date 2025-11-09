@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from app.core.config import settings
 from app.database import connect_to_mongo, close_mongo_connection, get_database
@@ -65,6 +66,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Configurar Prometheus metrics
+Instrumentator().instrument(app).expose(app)
+
 # Include routers
 app.include_router(health.router)
 app.include_router(profiles.router)
@@ -83,7 +87,8 @@ async def root():
             "live": "/health/live",
             "ready": "/health/ready",
             "docs": "/docs",
-            "profiles": "/api/profiles"
+            "profiles": "/api/profiles",
+            "metrics": "/metrics"
         }
     }
 
@@ -97,4 +102,3 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
-

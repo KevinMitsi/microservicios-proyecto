@@ -1,0 +1,101 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'microservices-proyecto'
+    environment: 'development'
+
+# Configuración de Alertmanager (opcional, para futuras alertas)
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+scrape_configs:
+  # Prometheus mismo
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+
+  # Microservicio de Autenticación (Spring Boot)
+  - job_name: 'msvc-auth'
+    metrics_path: '/actuator/prometheus'
+    static_configs:
+      - targets: ['msvc-auth:8081']
+        labels:
+          service: 'auth'
+          technology: 'spring-boot'
+
+  # Microservicio de Perfiles (FastAPI)
+  - job_name: 'msvc-profiles'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['msvc-profiles:8082']
+        labels:
+          service: 'profiles'
+          technology: 'fastapi'
+
+  # Microservicio de Notificaciones (Node.js)
+  - job_name: 'msvc-notifications'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['msvc-notifications:4000']
+        labels:
+          service: 'notifications'
+          technology: 'nodejs'
+
+  # RabbitMQ Exporter
+  - job_name: 'rabbitmq'
+    static_configs:
+      - targets: ['rabbitmq-exporter:9419']
+        labels:
+          service: 'rabbitmq'
+          type: 'message-broker'
+
+  # PostgreSQL Exporter (para msvc-auth)
+  - job_name: 'postgresql'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgresql'
+          database: 'authdb'
+
+  # MongoDB Exporter (para msvc-profiles)
+  - job_name: 'mongodb'
+    static_configs:
+      - targets: ['mongodb-exporter:9216']
+        labels:
+          service: 'mongodb'
+          database: 'profilesdb'
+
+  # Redis Exporter (para msvc-notifications)
+  - job_name: 'redis'
+    static_configs:
+      - targets: ['redis-exporter:9121']
+        labels:
+          service: 'redis'
+          type: 'cache'
+
+  # FluentBit Metrics
+  - job_name: 'fluent-bit'
+    metrics_path: '/api/v1/metrics/prometheus'
+    static_configs:
+      - targets: ['fluent-bit:2020']
+        labels:
+          service: 'fluent-bit'
+          type: 'logging'
+
+  # OpenSearch (si tiene métricas expuestas)
+  - job_name: 'opensearch'
+    static_configs:
+      - targets: ['opensearch:9200']
+        labels:
+          service: 'opensearch'
+          type: 'search-engine'
+
+  # Node Exporter (métricas del sistema)
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['node-exporter:9100']
+        labels:
+          type: 'system'

@@ -139,17 +139,28 @@ Para Linux/Mac:
 
 ## CI/CD con Jenkins (local)
 
+### Interfaces de Usuario
+- **Grafana** (Dashboards): http://localhost:3000 (admin/admin)
+- **Prometheus** (Métricas): http://localhost:9090
 Para levantar Jenkins como parte de esta plataforma:
-
 ```bash
-# Construir la imagen personalizada de Jenkins
 docker compose build jenkins
 
+### Endpoints de Métricas
+- **msvc-auth**: http://localhost:8081/actuator/prometheus
+- **msvc-profiles**: http://localhost:8082/metrics
+- **msvc-notifications**: http://localhost:4000/metrics
+- **FluentBit**: http://localhost:2020/api/v1/metrics/prometheus
 # Iniciar Jenkins
 docker compose up -d jenkins
 
-# Leer la contraseña inicial
-docker exec -it jenkins cat /var/jenkins_home/secrets/initialAdminPassword
-```
-
-Luego vaya a `http://localhost:8080`, complete el onboarding y cree un Pipeline apuntando a este repo (detectar el `Jenkinsfile`). Más detalles en [docs/CI-CD.md](docs/CI-CD.md).
+| Servicio | Puerto | Base de Datos | Puerto BD | Métricas |
+|----------|--------|---------------|-----------|----------|
+| msvc-auth | 8081 | PostgreSQL | 5433 | :8081/actuator/prometheus |
+| msvc-profiles | 8082 | MongoDB | 27018 | :8082/metrics |
+| msvc-notifications | 4000 | Redis | 6379 | :4000/metrics |
+| RabbitMQ | 5672/15672 | - | - | exporter:9419 |
+| OpenSearch | 9200 | - | - | - |
+| FluentBit | 2020/9880 | - | - | :2020/api/v1/metrics/prometheus |
+| Prometheus | 9090 | - | - | - |
+| Grafana | 3000 | - | - | - |
