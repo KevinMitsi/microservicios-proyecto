@@ -22,7 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
@@ -76,13 +76,13 @@ public class UserController {
         return ResponseEntity.notFound().build();
     }
 
-    @PostMapping("/auth/login")
+    @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
         AuthResponse authResponse = userService.login(loginRequest);
         return ResponseEntity.ok(authResponse);
     }
 
-    @PostMapping("/auth/tokens")
+    @PostMapping("/tokens")
     public ResponseEntity<Map<String, String>> requestPasswordRecovery(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         if (email == null || email.isEmpty()) {

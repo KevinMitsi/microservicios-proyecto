@@ -5,6 +5,7 @@ from typing import Callable
 from app.core.config import settings
 import asyncio
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +61,7 @@ class RabbitMQService:
                 logger.error(f"❌ Failed to connect to RabbitMQ: {e}")
                 self.is_connected = False
                 if max_retries is not None and attempt >= max_retries:
-                    logger.error(f"❌ Max retries reached. Giving up.")
+                    logger.error("❌ Max retries reached. Giving up.")
                     raise
                 logger.info(f"⏳ Retrying in {retry_delay} seconds...")
                 import time
@@ -131,42 +132,59 @@ rabbitmq_service = RabbitMQService()
 
 def start_consumer_thread(profile_service):
     """Iniciar consumer en un thread separado"""
+
+    # Variable para mantener el loop
+    consumer_loop = None
+
+    def run_async_task(coro):
+        """Ejecutar una corrutina en un nuevo event loop"""
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        try:
+            return loop.run_until_complete(coro)
+        finally:
+            loop.close()
+
     def callback(ch, method, properties, body):
         try:
             event = json.loads(body.decode())
             logger.info(f"📨 Received event: {event}")
-
-            # Process event based on type
             event_type = event.get('type') or event.get('eventType')
 
-            if event_type == 'USER_REGISTERED':
-                # Create profile for new user
-                user_id = event.get('userId')
+            if event_type in ['USER_REGISTERED', 'register', 'user.register']:
+                user_id = str(event.get('userId'))
                 username = event.get('username') or event.get('data', {}).get('username')
 
                 if user_id and username:
-                    # Use asyncio to run async function
-                    loop = asyncio.new_event_loop()
-                    asyncio.set_event_loop(loop)
-                    loop.run_until_complete(
-                        profile_service.create_profile_from_event(user_id, username)
-                    )
-                    loop.close()
-                    logger.info(f"✅ Profile created for user: {username}")
+                    try:
+                        # Ejecutar la corrutina en un nuevo event loop para cada mensaje
+                        run_async_task(
+                            profile_service.create_profile_from_event(user_id, username)
+                        )
 
-            # Acknowledge message
+                        logger.info(f"✅ Profile created for user: {username}")
+                    except Exception as e:
+                        logger.error(f"❌ Error creating profile from event: {e}")
+                        import traceback
+                        logger.error(traceback.format_exc())
+                else:
+                    logger.warning(f"⚠️ Missing userId or username in event: {event}")
+
             ch.basic_ack(delivery_tag=method.delivery_tag)
-
         except Exception as e:
             logger.error(f"❌ Error processing message: {e}")
-            # Reject and don't requeue
+            import traceback
+            logger.error(traceback.format_exc())
             ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     def consume():
         try:
+            # Iniciar el consumidor
             rabbitmq_service.start_consuming(callback)
         except Exception as e:
             logger.error(f"❌ Consumer thread error: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
 
     consumer_thread = Thread(target=consume, daemon=True)
     consumer_thread.start()

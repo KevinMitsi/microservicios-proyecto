@@ -42,9 +42,10 @@ management:
     prometheus:
       enabled: true
   metrics:
-    export:
-      prometheus:
-        enabled: true
     tags:
       application: ${spring.application.name}
       environment: development
+  prometheus:
+    metrics:
+      export:
+        enabled: true

@@ -1,6 +1,6 @@
 services:
   # ============================================
-  # Mensajería - RabbitMQ
+  # Servicios principales y sus bases de datos
   # ============================================
   rabbitmq:
     container_name: rabbitmq
@@ -14,8 +14,197 @@ services:
     networks:
       - microservices-net
 
+  db-auth:
+    container_name: db-auth
+    image: postgres:15
+    restart: always
+    environment:
+      POSTGRES_DB: authdb
+      POSTGRES_USER: authuser
+      POSTGRES_PASSWORD: authpass
+    volumes:
+      - ./data/db-auth:/var/lib/postgresql/data
+    ports:
+      - "5433:5432"
+    networks:
+      - microservices-net
+
+  db-profiles:
+    container_name: db-profiles
+    image: mongo:7
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: profilesuser
+      MONGO_INITDB_ROOT_PASSWORD: profilespass
+      MONGO_INITDB_DATABASE: profilesdb
+    ports:
+      - "27018:27017"
+    volumes:
+      - ./data/db-profiles:/data/db
+    networks:
+      - microservices-net
+
+  db-notifications:
+    container_name: db-notifications
+    image: redis:7
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - ./data/db-notifications:/data
+    networks:
+      - microservices-net
+
+  opensearch:
+    image: opensearchproject/opensearch:2.11.0
+    container_name: opensearch
+    environment:
+      - discovery.type=single-node
+      - bootstrap.memory_lock=true
+      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "DISABLE_SECURITY_PLUGIN=true"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    ports:
+      - "9200:9200"
+    networks:
+      - microservices-net
+
+  opensearch-dashboards:
+    image: opensearchproject/opensearch-dashboards:2.11.0
+    container_name: opensearch-dashboards
+    ports:
+      - "5601:5601"
+    environment:
+      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
+      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
+    depends_on:
+      - opensearch
+    networks:
+      - microservices-net
+
+  fluent-bit:
+    build: ./msvc-logs
+    container_name: fluent-bit
+    restart: on-failure
+    depends_on:
+      - opensearch
+      - rabbitmq
+    ports:
+      - "2020:2020"
+      - "9880:9880"
+      - "24224:24224"
+    networks:
+      - microservices-net
+
+  direct-log-processor:
+    build:
+      context: ./msvc-logs
+      dockerfile: Dockerfile.direct
+    container_name: direct-log-processor
+    restart: on-failure
+    depends_on:
+      - fluent-bit
+      - rabbitmq
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - FLUENTBIT_URL=http://fluent-bit:9880
+      - LOG_QUEUE_NAME=log_queue
+    networks:
+      - microservices-net
+
+  jenkins:
+    container_name: jenkins
+    build:
+      context: .
+      dockerfile: ci/jenkins.Dockerfile
+    ports:
+      - "8080:8080"
+    user: root
+    volumes:
+      - ./jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - microservices-net
+
+  msvc-auth:
+    container_name: msvc-auth
+    restart: on-failure
+    build: ./msvc-auth
+    ports:
+      - "8081:8081"
+    env_file:
+      - ./msvc-auth/.env
+    environment:
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+    depends_on:
+      - rabbitmq
+      - db-auth
+    networks:
+      - microservices-net
+
+  msvc-profiles:
+    container_name: msvc-profiles
+    build: ./msvc-profiles
+    ports:
+      - "8082:8082"
+    env_file:
+      - ./msvc-profiles/.env
+    environment:
+      - MONGO_URL=mongodb://profilesuser:profilespass@db-profiles:27017/profilesdb?authSource=admin
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+    depends_on:
+      - rabbitmq
+      - db-profiles
+    networks:
+      - microservices-net
+
+  msvc-notifications:
+    container_name: msvc-notifications
+    restart: on-failure
+    build: ./msvc-notifications
+    ports:
+      - "4000:4000"
+    environment:
+      - REDIS_URL=redis://db-notifications:6379
+      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
+      - NODE_ENV=production
+      # Email Configuration (cambiar por credenciales reales en producción)
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USER=${EMAIL_USER:-your-email@gmail.com}
+      - EMAIL_PASSWORD=${EMAIL_PASSWORD:-your-app-password}
+      - FRONTEND_URL=${FRONTEND_URL:-http://localhost:3000}
+    depends_on:
+      - rabbitmq
+      - db-notifications
+    networks:
+      - microservices-net
+
+  msvc-gateway:
+    container_name: msvc-gateway
+    build: ./msvc-gateway
+    ports:
+      - "8083:8083"
+    environment:
+      - PORT=8083
+      - NODE_ENV=development
+      - MSVC_AUTH_URL=http://msvc-auth:8081/api/auth
+      - MSVC_PROFILES_URL=http://msvc-profiles:8082/api/profiles
+      - MSVC_NOTIFICATIONS_URL=http://msvc-notifications:4000/api/notifications
+      - ALLOWED_ORIGINS=*
+      - LOG_LEVEL=info
+    depends_on:
+      - msvc-auth
+      - msvc-profiles
+      - msvc-notifications
+    networks:
+      - microservices-net
+
   # ============================================
-  # Monitoreo - Prometheus & Grafana
+  # Exporters y monitoreo
   # ============================================
   prometheus:
     container_name: prometheus
@@ -51,7 +240,6 @@ services:
     networks:
       - microservices-net
 
-  # Exporters para métricas de bases de datos
   postgres-exporter:
     container_name: postgres-exporter
     image: prometheuscommunity/postgres-exporter:latest
@@ -113,185 +301,6 @@ services:
       - "9100:9100"
     command:
       - '--path.rootfs=/host'
-    volumes:
-      - '/:/host:ro,rslave'
-    networks:
-      - microservices-net
-
-  # ============================================
-  # Logging (OpenSearch + FluentBit)
-  # ============================================
-  opensearch:
-    image: opensearchproject/opensearch:2.11.0
-    container_name: opensearch
-    environment:
-      - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m"
-      - "DISABLE_SECURITY_PLUGIN=true"
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
-    ports:
-      - "9200:9200"
-    networks:
-      - microservices-net
-
-  fluent-bit:
-    build: ./msvc-logs
-    container_name: fluent-bit
-    restart: on-failure
-    depends_on:
-      - opensearch
-      - rabbitmq
-    ports:
-      - "2020:2020"
-      - "9880:9880"
-      - "24224:24224"
-    networks:
-      - microservices-net
-
-  direct-log-processor:
-    build:
-      context: ./msvc-logs
-      dockerfile: Dockerfile.direct
-    container_name: direct-log-processor
-    restart: on-failure
-    depends_on:
-      - fluent-bit
-      - rabbitmq
-    environment:
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
-      - FLUENTBIT_URL=http://fluent-bit:9880
-      - LOG_QUEUE_NAME=log_queue
-    networks:
-      - microservices-net
-
-  # ============================================
-  # Integración Continua - Jenkins
-  # ============================================
-  jenkins:
-    container_name: jenkins
-    build:
-      context: .
-      dockerfile: ci/jenkins.Dockerfile
-    ports:
-      - "8080:8080"
-    user: root
-    volumes:
-      - ./jenkins_home:/var/jenkins_home
-      - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - microservices-net
-
-  # ============================================
-  # Auth Service (Spring Boot + PostgreSQL)
-  # ============================================
-  msvc-auth:
-    container_name: msvc-auth
-    restart: on-failure
-    build: ./msvc-auth
-    ports:
-      - "8081:8081"
-    env_file:
-      - ./msvc-auth/.env
-    environment:
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
-    depends_on:
-      - rabbitmq
-      - db-auth
-    networks:
-      - microservices-net
-
-  db-auth:
-    container_name: db-auth
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_DB: authdb
-      POSTGRES_USER: authuser
-      POSTGRES_PASSWORD: authpass
-    volumes:
-      - ./data/db-auth:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
-    networks:
-      - microservices-net
-
-  # ============================================
-  # Profiles Service (FastAPI + MongoDB)
-  # ============================================
-  msvc-profiles:
-    container_name: msvc-profiles
-    build: ./msvc-profiles
-    ports:
-      - "8082:8082"
-    env_file:
-      - ./msvc-profiles/.env
-    environment:
-      - MONGO_URL=mongodb://profilesuser:profilespass@db-profiles:27017/profilesdb?authSource=admin
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
-    depends_on:
-      - rabbitmq
-      - db-profiles
-    networks:
-      - microservices-net
-
-  db-profiles:
-    container_name: db-profiles
-    image: mongo:7
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: profilesuser
-      MONGO_INITDB_ROOT_PASSWORD: profilespass
-      MONGO_INITDB_DATABASE: profilesdb
-    ports:
-      - "27018:27017"
-    volumes:
-      - ./data/db-profiles:/data/db
-    networks:
-      - microservices-net
-
-  # ============================================
-  # Notifications Service (Node.js + Redis)
-  # ============================================
-  msvc-notifications:
-    container_name: msvc-notifications
-    restart: on-failure
-    build: ./msvc-notifications
-    ports:
-      - "4000:4000"
-    environment:
-      - REDIS_URL=redis://db-notifications:6379
-      - RABBITMQ_URL=amqp://admin:admin@rabbitmq:5672
-    depends_on:
-      - rabbitmq
-      - db-notifications
-    networks:
-      - microservices-net
-
-  db-notifications:
-    container_name: db-notifications
-    image: redis:7
-    restart: always
-    ports:
-      - "6379:6379"
-    volumes:
-      - ./data/db-notifications:/data
-    networks:
-      - microservices-net
-
-  opensearch-dashboards:
-    image: opensearchproject/opensearch-dashboards:2.11.0
-    container_name: opensearch-dashboards
-    ports:
-      - "5601:5601"
-    environment:
-      OPENSEARCH_HOSTS: '["http://opensearch:9200"]'
-      DISABLE_SECURITY_DASHBOARDS_PLUGIN: "true"
-    depends_on:
-      - opensearch
     networks:
       - microservices-net
 

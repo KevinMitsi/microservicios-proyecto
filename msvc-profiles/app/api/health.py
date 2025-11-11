@@ -3,7 +3,7 @@ from app.core.config import settings
 from app.database import get_database
 from app.services import rabbitmq_service
 
-router = APIRouter(prefix="/health", tags=["Health"])
+router = APIRouter(prefix="/api/profiles/health", tags=["Health"])
 
 
 @router.get("", summary="Health Check", description="Verifica el estado general del servicio")

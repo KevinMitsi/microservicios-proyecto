@@ -5,7 +5,7 @@ import RabbitMQConnection from '../config/rabbitmq';
 const router = Router();
 
 /**
- * GET /health
+ * GET /
  * Verifica el estado de salud del servicio
  */
 router.get('/', (req: Request, res: Response) => {
@@ -30,7 +30,7 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 /**
- * GET /health/ready
+ * GET /ready
  * Verifica si el servicio está listo para recibir tráfico
  */
 router.get('/ready', (req: Request, res: Response) => {
@@ -57,7 +57,7 @@ router.get('/ready', (req: Request, res: Response) => {
 });
 
 /**
- * GET /health/live
+ * GET /live
  * Verifica si el servicio está vivo
  */
 router.get('/live', (req: Request, res: Response) => {

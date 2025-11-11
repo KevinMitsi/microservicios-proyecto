@@ -5,6 +5,7 @@ API Gateway para el ecosistema de microservicios. Proporciona un punto de entrad
 ## 🚀 Características
 
 - **Proxy Inteligente**: Enruta peticiones a los microservicios correspondientes
+- **JWT Pass-through**: Reenvía automáticamente tokens de autenticación a servicios protegidos
 - **Health Checks**: Monitoreo de salud del gateway y servicios
 - **CORS**: Configuración flexible de CORS
 - **Logging**: Sistema de logging estructurado
@@ -92,6 +93,41 @@ LOG_LEVEL=info
 - `/**/api/auth/**` - Proxy a msvc-auth
 - `/**/api/profiles/**` - Proxy a msvc-profiles
 - `/**/api/notifications/**` - Proxy a msvc-notifications
+
+## 🔐 Autenticación
+
+El gateway soporta rutas protegidas con JWT (Bearer tokens). Los tokens se pasan automáticamente a los microservicios.
+
+### Flujo de autenticación:
+
+1. **Obtener token**:
+```bash
+curl -X POST http://localhost:8083/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"user123","password":"password"}'
+```
+
+2. **Usar token en peticiones protegidas**:
+```bash
+curl -X GET http://localhost:8083/api/auth/users \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+El gateway automáticamente:
+- Detecta el header `Authorization`
+- Lo reenvía al microservicio correspondiente
+- El microservicio valida el token con Spring Security
+
+### Rutas protegidas en msvc-auth:
+- `GET /api/auth/users` - Obtener todos los usuarios (requiere autenticación)
+- `GET /api/auth/users/{id}` - Obtener usuario por ID (requiere autenticación)
+- `PUT /api/auth/users/{id}` - Actualizar usuario (requiere autenticación)
+- `DELETE /api/auth/users/{id}` - Eliminar usuario (requiere autenticación)
+
+### Rutas públicas:
+- `POST /api/auth/register` - Registro de usuario
+- `POST /api/auth/login` - Inicio de sesión
+- `POST /api/auth/password/recover` - Recuperación de contraseña
 
 ## 🏗️ Arquitectura
 

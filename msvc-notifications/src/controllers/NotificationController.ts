@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import NotificationService from '../services/NotificationService';
 
 class NotificationController {
-  private notificationService: NotificationService;
+  private readonly notificationService: NotificationService;
 
   constructor() {
     this.notificationService = new NotificationService();
@@ -15,7 +15,7 @@ class NotificationController {
   getUserNotifications = async (req: Request, res: Response): Promise<void> => {
     try {
       const { userId } = req.params;
-      const limit = parseInt(req.query.limit as string) || 50;
+      const limit = Number.parseInt(req.query.limit as string) || 50;
 
       const notifications = await this.notificationService.getUserNotifications(userId, limit);
 
@@ -146,7 +146,7 @@ class NotificationController {
   deleteNotification = async (req: Request, res: Response): Promise<void> => {
     try {
       const { notificationId } = req.params;
-      const { userId } = req.body;
+      const { userId } = req.params;
 
       if (!userId) {
         res.status(400).json({

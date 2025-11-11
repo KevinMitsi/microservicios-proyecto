@@ -25,7 +25,7 @@ app.get('/metrics', async (req, res) => {
 
 // Routes
 app.use('/api/notifications', notificationRoutes);
-app.use('/health', healthRoutes);
+app.use('/api/notifications/health', healthRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {

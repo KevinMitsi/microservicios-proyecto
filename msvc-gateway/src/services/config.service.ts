@@ -27,21 +27,21 @@ export class ConfigService {
     const services = [
       {
         name: 'msvc-auth',
-        target: process.env.MSVC_AUTH_URL || 'http://msvc-auth:8081',
+        target: process.env.MSVC_AUTH_URL || 'http://msvc-auth:8081/api/auth',
         path: '/api/auth',
         changeOrigin: true,
         timeout: 30000,
       },
       {
         name: 'msvc-profiles',
-        target: process.env.MSVC_PROFILES_URL || 'http://msvc-profiles:8082',
+        target: process.env.MSVC_PROFILES_URL || 'http://msvc-profiles:8082/api/profiles',
         path: '/api/profiles',
         changeOrigin: true,
         timeout: 30000,
       },
       {
         name: 'msvc-notifications',
-        target: process.env.MSVC_NOTIFICATIONS_URL || 'http://msvc-notifications:4000',
+        target: process.env.MSVC_NOTIFICATIONS_URL || 'http://msvc-notifications:4000/api/notifications',
         path: '/api/notifications',
         changeOrigin: true,
         timeout: 30000,

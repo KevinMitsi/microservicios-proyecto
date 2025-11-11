@@ -77,9 +77,11 @@ public class UserServiceImpl implements UserService {
         Map<String, Object> data = new HashMap<>();
         data.put("Registered", LocalDateTime.now());
 
+
+
         publishUserEvent("register", user, data);
 
-        return userRepository.save(user);
+        return user;
 
     }
 
@@ -97,7 +99,7 @@ public class UserServiceImpl implements UserService {
             UserEntity user = userRepository.findByUsername(loginRequest.getUsername())
                     .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-            String jwt = jwtUtils.generateToken(user.getUsername(), user.getAuthorities());
+            String jwt = jwtUtils.generateToken(user.getUsername(), user.getId(),user.getAuthorities());
 
             AuthResponse authResponse = new AuthResponse();
             authResponse.setToken(jwt);
@@ -278,7 +280,7 @@ public class UserServiceImpl implements UserService {
         user.setFirstName(registrationRequest.getFirstName());
         user.setLastName(registrationRequest.getLastName());
         user.addRole(Role.USER);
-        return user;
+        return userRepository.save(user);
     }
 
     @Override

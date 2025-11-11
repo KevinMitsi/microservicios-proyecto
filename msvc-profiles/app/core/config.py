@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from functools import lru_cache
+import base64
 
 class Settings(BaseSettings):
     # MongoDB
@@ -23,6 +24,12 @@ class Settings(BaseSettings):
 
 @lru_cache()
 def get_settings():
-    return Settings()
+    s = Settings()
+    # Decodifica la clave JWT en base64 y la usa completa para HS384
+    try:
+        s.jwt_secret = base64.b64decode(s.jwt_secret)
+    except Exception:
+        pass  # Si falla, deja la clave como está
+    return s
 
 settings = get_settings()

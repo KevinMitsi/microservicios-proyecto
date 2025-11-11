@@ -4,6 +4,7 @@ import { proxyService } from './services/proxy.service.js';
 import { logger } from './services/logger.service.js';
 import { corsMiddleware } from './middlewares/cors.middleware.js';
 import { requestLogger } from './middlewares/logger.middleware.js';
+import { jwtMiddleware } from './middlewares/jwt.middleware.js';
 import { errorHandler } from './middlewares/error.middleware.js';
 import { setupRoutes } from './routes/index.js';
 import { gatewayController } from './controllers/gateway.controller.js';
@@ -16,6 +17,7 @@ export function createApp(): Application {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use(requestLogger);
+  app.use(jwtMiddleware); // JWT middleware para pasar tokens a microservicios
 
   // Setup gateway routes
   setupRoutes(app);

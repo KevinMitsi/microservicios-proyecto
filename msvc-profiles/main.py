@@ -83,12 +83,12 @@ async def root():
         "version": settings.app_version,
         "description": "Microservicio de gestión de perfiles de usuario",
         "endpoints": {
-            "health": "/health",
-            "live": "/health/live",
-            "ready": "/health/ready",
-            "docs": "/docs",
-            "profiles": "/api/profiles",
-            "metrics": "/metrics"
+            "health": "/api/profiles/health",
+            "live": "/api/profiles/health/live",
+            "ready": "/api/profiles/health/ready",
+            "docs": "/api/profiles/docs",
+            "profiles": "/api/profiles/profiles",
+            "metrics": "/api/profiles/metrics"
         }
     }
 
