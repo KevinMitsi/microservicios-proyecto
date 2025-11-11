@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  msvc-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: msvc-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - NODE_ENV=production
+      - MSVC_AUTH_URL=http://msvc-auth:8081
+      - MSVC_PROFILES_URL=http://msvc-profiles:8082
+      - MSVC_NOTIFICATIONS_URL=http://msvc-notifications:4000
+      - ALLOWED_ORIGINS=*
+      - LOG_LEVEL=info
+    networks:
+      - microservices-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health/live', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+
+networks:
+  microservices-network:
+    driver: bridge
