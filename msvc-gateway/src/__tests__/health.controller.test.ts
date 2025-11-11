@@ -2,25 +2,17 @@ import type { Request, Response } from 'express';
 import { HealthController } from '../controllers/health.controller.js';
 import { HealthService } from '../services/health.service.js';
 
-jest.mock('../services/health.service.js');
-
 describe('HealthController', () => {
   let healthController: HealthController;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
-  let mockHealthService: jest.Mocked<HealthService>;
-
   beforeEach(() => {
     healthController = new HealthController();
-    
     mockRequest = {};
-    
     mockResponse = {
       status: jest.fn().mockReturnThis(),
       json: jest.fn().mockReturnThis(),
     };
-
-    mockHealthService = HealthService.getInstance() as jest.Mocked<HealthService>;
   });
 
   afterEach(() => {
@@ -35,14 +27,11 @@ describe('HealthController', () => {
         uptime: 100,
         services: [],
       };
-
-      mockHealthService.checkHealth = jest.fn().mockResolvedValue(healthyResult);
-
+      jest.spyOn(HealthService.prototype, 'checkHealth').mockResolvedValue(healthyResult);
       await healthController.checkHealth(
         mockRequest as Request,
         mockResponse as Response
       );
-
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(healthyResult);
     });
@@ -54,26 +43,21 @@ describe('HealthController', () => {
         uptime: 100,
         services: [],
       };
-
-      mockHealthService.checkHealth = jest.fn().mockResolvedValue(unhealthyResult);
-
+      jest.spyOn(HealthService.prototype, 'checkHealth').mockResolvedValue(unhealthyResult);
       await healthController.checkHealth(
         mockRequest as Request,
         mockResponse as Response
       );
-
       expect(mockResponse.status).toHaveBeenCalledWith(503);
       expect(mockResponse.json).toHaveBeenCalledWith(unhealthyResult);
     });
 
     it('should handle errors gracefully', async () => {
-      mockHealthService.checkHealth = jest.fn().mockRejectedValue(new Error('Test error'));
-
+      jest.spyOn(HealthService.prototype, 'checkHealth').mockRejectedValue(new Error('Test error'));
       await healthController.checkHealth(
         mockRequest as Request,
         mockResponse as Response
       );
-
       expect(mockResponse.status).toHaveBeenCalledWith(500);
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -103,13 +87,11 @@ describe('HealthController', () => {
 
   describe('readiness', () => {
     it('should return 200 with ready status', () => {
-      mockHealthService.getUptime = jest.fn().mockReturnValue(123);
-
+      jest.spyOn(HealthService.prototype, 'getUptime').mockReturnValue(123);
       healthController.readiness(
         mockRequest as Request,
         mockResponse as Response
       );
-
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       expect(mockResponse.json).toHaveBeenCalledWith(
         expect.objectContaining({
