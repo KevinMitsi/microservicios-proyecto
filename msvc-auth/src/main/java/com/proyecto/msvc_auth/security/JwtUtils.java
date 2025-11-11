@@ -34,7 +34,7 @@ public class JwtUtils {
         this.secretKey = Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String generateToken(String username, Set<Role> roles) {
+    public String generateToken(String username, Long userId, Set<Role> roles) {
         Instant now = Instant.now();
         Date issuedAt = Date.from(now);
         Date expiration = Date.from(now.plus(expirationMinutes, ChronoUnit.MINUTES));
@@ -43,6 +43,7 @@ public class JwtUtils {
                 .map(Enum::name)
                 .toList();
         claims.put("roles", rolesList);
+        claims.put("userId", userId); // Add userId to claims
 
         return Jwts.builder()
                 .header()
@@ -88,16 +89,6 @@ public class JwtUtils {
                 .build()
                 .parseSignedClaims(token)  // parseClaimsJws() → parseSignedClaims()
                 .getPayload();             // getBody() → getPayload()
-    }
-
-    public boolean isTokenExpired(String token) {
-        try {
-            Date expiration = getClaimsFromToken(token).getExpiration();
-            return expiration.before(new Date());
-        } catch (JwtException | IllegalArgumentException e) {
-            return true;
-
-        }
     }
 
     public List<String> getRolesFromToken(String token) {

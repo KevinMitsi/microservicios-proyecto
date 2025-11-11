@@ -4,6 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from app.models import UserProfile, ProfileUpdateRequest, ProfileCreateRequest
 from app.services.rabbitmq_service import rabbitmq_service
 import logging
+import asyncio
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,7 @@ class ProfileService:
 
         except Exception as e:
             logger.error(f"❌ Error creating profile from event: {e}")
+            raise
 
     async def get_profile(self, user_id: str) -> Optional[UserProfile]:
         """Obtener perfil de usuario"""
@@ -191,4 +193,3 @@ class ProfileService:
         except Exception as e:
             logger.error(f"❌ Error getting all profiles: {e}")
             raise
-

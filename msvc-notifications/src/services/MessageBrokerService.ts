@@ -19,6 +19,53 @@ class MessageBrokerService {
   }
 
   /**
+   * Mapea eventos de msvc-auth al formato de NotificationEvent
+   */
+  private mapEventToNotificationEvent(rawEvent: any): NotificationEvent {
+    // Determinar el tipo de evento
+    let eventType = rawEvent.eventType || rawEvent.type || 'custom';
+
+    // Mapear eventType a NotificationType
+    const typeMap: { [key: string]: string } = {
+      'register': 'user.created',
+      'user.register': 'user.created',
+      'login': 'auth.login',
+      'user.login': 'auth.login',
+      'auth.login': 'auth.login',
+      'password-recovery': 'custom',
+      'user.password-recovery': 'custom',
+      'password-update': 'custom',
+      'user.password-update': 'custom',
+      'user-update': 'user.updated',
+      'user.user-update': 'user.updated',
+      'user-delete': 'user.deleted',
+      'user.user-delete': 'user.deleted',
+      'profile.created': 'profile.created',
+      'profile.updated': 'profile.updated',
+      'profile.deleted': 'profile.deleted',
+    };
+
+    const mappedType = typeMap[eventType] || eventType;
+
+    // Construir el evento mapeado
+    const mappedEvent: NotificationEvent = {
+      type: mappedType as any,
+      userId: String(rawEvent.userId),
+      data: {
+        username: rawEvent.username,
+        email: rawEvent.email,
+        mobileNumber: rawEvent.mobileNumber,
+        timestamp: rawEvent.timestamp,
+        eventType: eventType, // Preservar el eventType original
+        ...rawEvent.additionalData,
+      },
+      timestamp: rawEvent.timestamp ? new Date(rawEvent.timestamp) : new Date(),
+    };
+
+    return mappedEvent;
+  }
+
+  /**
    * Inicializa el servicio de mensajería
    */
   async initialize(): Promise<void> {
@@ -76,16 +123,16 @@ class MessageBrokerService {
             // Log para depuración: imprime el evento completo recibido
             console.log('🔍 Evento recibido (raw):', content);
             console.log('🔍 Evento recibido (objeto):', event);
-            // Adaptar eventType a type si es necesario
-            if (!event.type && event.eventType) {
-              event.type = event.eventType;
-            }
-            console.log(`📨 Received event: ${event.type} for user: ${event.userId}`);
+
+            // Mapear el evento de msvc-auth al formato esperado
+            const mappedEvent = this.mapEventToNotificationEvent(event);
+
+            console.log(`📨 Received event: ${mappedEvent.type} for user: ${mappedEvent.userId}`);
             // Procesar el evento
-            await this.notificationService.processEvent(event);
+            await this.notificationService.processEvent(mappedEvent);
             // Confirmar el mensaje
             this.channel!.ack(msg);
-            console.log(`✅ Event processed successfully: ${event.type}`);
+            console.log(`✅ Event processed successfully: ${mappedEvent.type}`);
           } catch (error) {
             console.error('❌ Error processing message:', error);
             // Rechazar el mensaje y no re-encolar
