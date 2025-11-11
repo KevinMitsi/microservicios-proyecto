@@ -130,20 +130,12 @@ class RabbitMQService:
 rabbitmq_service = RabbitMQService()
 
 
-def start_consumer_thread(profile_service):
+def start_consumer_thread(profile_service, main_loop=None):
     """Iniciar consumer en un thread separado"""
 
-    # Variable para mantener el loop
-    consumer_loop = None
-
-    def run_async_task(coro):
-        """Ejecutar una corrutina en un nuevo event loop"""
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        try:
-            return loop.run_until_complete(coro)
-        finally:
-            loop.close()
+    # Obtener el loop principal de asyncio si no se proporciona
+    if main_loop is None:
+        main_loop = asyncio.get_event_loop()
 
     def callback(ch, method, properties, body):
         try:
@@ -157,11 +149,13 @@ def start_consumer_thread(profile_service):
 
                 if user_id and username:
                     try:
-                        # Ejecutar la corrutina en un nuevo event loop para cada mensaje
-                        run_async_task(
-                            profile_service.create_profile_from_event(user_id, username)
+                        # Ejecutar la corrutina en el event loop principal de forma thread-safe
+                        future = asyncio.run_coroutine_threadsafe(
+                            profile_service.create_profile_from_event(user_id, username),
+                            main_loop
                         )
-
+                        # Esperar a que complete (con timeout)
+                        future.result(timeout=30)
                         logger.info(f"✅ Profile created for user: {username}")
                     except Exception as e:
                         logger.error(f"❌ Error creating profile from event: {e}")
