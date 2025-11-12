@@ -1,161 +1,130 @@
-#!/usr/bin/env python3
-"""
-Script de prueba para msvc-profiles
-Requiere: pip install httpx
-"""
-
-import asyncio
-import httpx
-import json
-
-# Configuración
-BASE_URL = "http://localhost:8000"
-AUTH_URL = "http://localhost:8081"
-
-# Token de autenticación (obtenerlo de msvc-auth)
-TOKEN = None
+import pytest
+from httpx import AsyncClient
+from unittest.mock import patch, AsyncMock
 
 
-async def test_health_checks():
-    """Probar los endpoints de health"""
-    print("\n=== PROBANDO HEALTH CHECKS ===\n")
+@pytest.mark.integration
+class TestProfileAPI:
+    """Tests de integración para la API de perfiles"""
 
-    async with httpx.AsyncClient() as client:
-        # Health
-        response = await client.get(f"{BASE_URL}/health")
-        print(f"✅ GET /health: {response.status_code}")
-        print(json.dumps(response.json(), indent=2))
+    @pytest.mark.asyncio
+    async def test_health_endpoint(self, test_client):
+        """Test endpoint de health"""
+        response = await test_client.get("/health")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "healthy"
+        assert "timestamp" in data
 
-        # Live
-        response = await client.get(f"{BASE_URL}/health/live")
-        print(f"\n✅ GET /health/live: {response.status_code}")
-        print(json.dumps(response.json(), indent=2))
+    @pytest.mark.asyncio
+    async def test_health_live_endpoint(self, test_client):
+        """Test endpoint de liveness"""
+        response = await test_client.get("/health/live")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "alive"
 
-        # Ready
-        response = await client.get(f"{BASE_URL}/health/ready")
-        print(f"\n✅ GET /health/ready: {response.status_code}")
-        print(json.dumps(response.json(), indent=2))
+    @pytest.mark.asyncio
+    async def test_create_profile_success(self, test_client, sample_profile_data, mock_database, mock_auth_token):
+        """Test creación exitosa de perfil"""
+        with patch('app.api.routes.profile.get_current_user') as mock_auth:
+            mock_auth.return_value = {"user_id": "test-user-123"}
 
+            response = await test_client.post(
+                "/api/v1/profiles",
+                json=sample_profile_data,
+                headers={"Authorization": mock_auth_token}
+            )
 
-async def test_create_profile(token: str):
-    """Crear un perfil"""
-    print("\n=== CREAR PERFIL ===\n")
+            assert response.status_code == 201
+            data = response.json()
+            assert data["user_id"] == sample_profile_data["user_id"]
+            assert data["nickname"] == sample_profile_data["nickname"]
 
-    profile_data = {
-        "nickname": "Johnny",
-        "personal_page_url": "https://johndoe.com",
-        "is_contact_public": True,
-        "mailing_address": "123 Main St, Tech City, USA",
-        "biography": "Software developer passionate about microservices and cloud computing",
-        "organization": "Tech Corp",
-        "country": "USA",
-        "social_links": {
-            "github": "https://github.com/johndoe",
-            "linkedin": "https://linkedin.com/in/johndoe",
-            "twitter": "https://twitter.com/johndoe"
-        }
-    }
+    @pytest.mark.asyncio
+    async def test_get_profile_success(self, test_client, sample_profile_data, mock_database, mock_auth_token):
+        """Test obtener perfil exitosamente"""
+        with patch('app.api.routes.profile.get_current_user') as mock_auth:
+            mock_auth.return_value = {"user_id": "test-user-123"}
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(
-            f"{BASE_URL}/api/profiles",
-            json=profile_data,
-            headers={"Authorization": f"Bearer {token}"}
+            # Mock de la base de datos para devolver el perfil
+            mock_database.return_value['profiles'].find_one.return_value = {
+                "_id": "profile_id_123",
+                **sample_profile_data
+            }
+
+            response = await test_client.get(
+                "/api/v1/profiles/test-user-123",
+                headers={"Authorization": mock_auth_token}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert data["user_id"] == "test-user-123"
+
+    @pytest.mark.asyncio
+    async def test_update_profile_success(self, test_client, mock_database, mock_auth_token):
+        """Test actualización exitosa de perfil"""
+        update_data = {"nickname": "UpdatedUser", "biography": "Updated biography"}
+
+        with patch('app.api.routes.profile.get_current_user') as mock_auth:
+            mock_auth.return_value = {"user_id": "test-user-123"}
+
+            response = await test_client.put(
+                "/api/v1/profiles/test-user-123",
+                json=update_data,
+                headers={"Authorization": mock_auth_token}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "updated successfully" in data["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_delete_profile_success(self, test_client, mock_database, mock_auth_token):
+        """Test eliminación exitosa de perfil"""
+        with patch('app.api.routes.profile.get_current_user') as mock_auth:
+            mock_auth.return_value = {"user_id": "test-user-123"}
+
+            response = await test_client.delete(
+                "/api/v1/profiles/test-user-123",
+                headers={"Authorization": mock_auth_token}
+            )
+
+            assert response.status_code == 200
+            data = response.json()
+            assert "deleted successfully" in data["message"].lower()
+
+    @pytest.mark.asyncio
+    async def test_unauthorized_access(self, test_client, sample_profile_data):
+        """Test acceso sin autorización"""
+        response = await test_client.post(
+            "/api/v1/profiles",
+            json=sample_profile_data
         )
-        print(f"Status: {response.status_code}")
-        print(json.dumps(response.json(), indent=2))
-        return response.json()
 
+        assert response.status_code == 401
 
-async def test_get_my_profile(token: str):
-    """Obtener mi perfil"""
-    print("\n=== OBTENER MI PERFIL ===\n")
+    @pytest.mark.asyncio
+    async def test_profile_not_found(self, test_client, mock_database, mock_auth_token):
+        """Test cuando el perfil no existe"""
+        with patch('app.api.routes.profile.get_current_user') as mock_auth:
+            mock_auth.return_value = {"user_id": "test-user-123"}
 
-    async with httpx.AsyncClient() as client:
-        response = await client.get(
-            f"{BASE_URL}/api/profiles/me",
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        print(f"Status: {response.status_code}")
-        print(json.dumps(response.json(), indent=2))
-        return response.json()
+            # Mock de la base de datos para devolver None
+            mock_database.return_value['profiles'].find_one.return_value = None
 
+            response = await test_client.get(
+                "/api/v1/profiles/nonexistent-user",
+                headers={"Authorization": mock_auth_token}
+            )
 
-async def test_update_profile(token: str):
-    """Actualizar perfil"""
-    print("\n=== ACTUALIZAR PERFIL ===\n")
+            assert response.status_code == 404
 
-    update_data = {
-        "biography": "Updated biography: Senior Software Engineer specializing in microservices",
-        "country": "Canada",
-        "social_links": {
-            "github": "https://github.com/johndoe-updated",
-            "linkedin": "https://linkedin.com/in/johndoe",
-            "twitter": "https://twitter.com/johndoe",
-            "website": "https://johndoe.dev"
-        }
-    }
-
-    async with httpx.AsyncClient() as client:
-        response = await client.put(
-            f"{BASE_URL}/api/profiles/me",
-            json=update_data,
-            headers={"Authorization": f"Bearer {token}"}
-        )
-        print(f"Status: {response.status_code}")
-        print(json.dumps(response.json(), indent=2))
-        return response.json()
-
-
-async def test_get_all_profiles():
-    """Obtener todos los perfiles"""
-    print("\n=== OBTENER TODOS LOS PERFILES ===\n")
-
-    async with httpx.AsyncClient() as client:
-        response = await client.get(f"{BASE_URL}/api/profiles?skip=0&limit=10")
-        print(f"Status: {response.status_code}")
-        profiles = response.json()
-        print(f"Total perfiles encontrados: {len(profiles)}")
-        print(json.dumps(profiles, indent=2))
-        return profiles
-
-
-async def main():
-    """Ejecutar todas las pruebas"""
-    print("🚀 Iniciando pruebas de msvc-profiles")
-
-    # 1. Health checks (no requieren autenticación)
-    await test_health_checks()
-
-    # 2. Obtener token (debes tenerlo de msvc-auth)
-    token = input("\n📝 Ingresa el token JWT de msvc-auth (o presiona Enter para omitir pruebas autenticadas): ").strip()
-
-    if not token:
-        print("\n⚠️ Sin token, solo se probaron los health checks")
-        return
-
-    try:
-        # 3. Crear perfil
-        await test_create_profile(token)
-
-        # 4. Obtener mi perfil
-        await test_get_my_profile(token)
-
-        # 5. Actualizar perfil
-        await test_update_profile(token)
-
-        # 6. Obtener mi perfil actualizado
-        await test_get_my_profile(token)
-
-        # 7. Obtener todos los perfiles
-        await test_get_all_profiles()
-
-        print("\n✅ Todas las pruebas completadas exitosamente!")
-
-    except Exception as e:
-        print(f"\n❌ Error durante las pruebas: {e}")
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
-
+    @pytest.mark.asyncio
+    async def test_metrics_endpoint(self, test_client):
+        """Test endpoint de métricas de Prometheus"""
+        response = await test_client.get("/metrics")
+        assert response.status_code == 200
+        # Verificar que contiene métricas de Prometheus
+        assert "python_info" in response.text
