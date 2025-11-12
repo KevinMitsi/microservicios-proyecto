@@ -18,7 +18,7 @@ def get_profile_service() -> ProfileService:
 
 
 @router.post(
-    "",
+    "/profile",
     response_model=ProfileResponse,
     status_code=status.HTTP_201_CREATED,
     summary="Crear perfil",
@@ -43,7 +43,7 @@ async def create_profile(
     - Links de redes sociales
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = str(current_user["user_id"])  # Convert user_id to string
         username = current_user["username"]
 
         profile = await profile_service.create_profile(user_id, username, profile_data)
@@ -74,7 +74,8 @@ async def get_my_profile(
 ):
     """Obtener el perfil del usuario autenticado."""
     try:
-        user_id = current_user["user_id"]
+        user_id = str(current_user["user_id"])  # Convertir a string para asegurar coincidencia
+        logger.info(f"Fetching profile for user_id: {user_id}")
         profile = await profile_service.get_profile(user_id)
 
         if not profile:
@@ -92,6 +93,39 @@ async def get_my_profile(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get profile"
+        )
+
+
+@router.get(
+    "/all",
+    response_model=List[ProfileResponse],
+    summary="Listar perfiles",
+    description="Obtener todos los perfiles (paginado)"
+)
+async def get_all_profiles(
+    skip: int = 0,
+    limit: int = 100,
+    profile_service: ProfileService = Depends(get_profile_service)
+):
+    """
+    Obtener todos los perfiles (paginado).
+
+    Parámetros:
+    - skip: Número de perfiles a omitir (default: 0)
+    - limit: Número máximo de perfiles a retornar (default: 100, max: 100)
+    """
+    try:
+        if limit > 100:
+            limit = 100
+
+        profiles = await profile_service.get_all_profiles(skip, limit)
+        return [ProfileResponse(**profile.model_dump()) for profile in profiles]
+
+    except Exception as e:
+        logger.error(f"Error getting all profiles: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get profiles"
         )
 
 
@@ -152,7 +186,7 @@ async def update_my_profile(
     - Links de redes sociales
     """
     try:
-        user_id = current_user["user_id"]
+        user_id = str(current_user["user_id"])
         profile = await profile_service.update_profile(user_id, profile_data)
 
         if not profile:
@@ -190,7 +224,7 @@ async def delete_my_profile(
 ):
     """Eliminar el perfil del usuario autenticado."""
     try:
-        user_id = current_user["user_id"]
+        user_id = str(current_user["user_id"])
         deleted = await profile_service.delete_profile(user_id)
 
         if not deleted:
@@ -209,37 +243,3 @@ async def delete_my_profile(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delete profile"
         )
-
-
-@router.get(
-    "",
-    response_model=List[ProfileResponse],
-    summary="Listar perfiles",
-    description="Obtener todos los perfiles (paginado)"
-)
-async def get_all_profiles(
-    skip: int = 0,
-    limit: int = 100,
-    profile_service: ProfileService = Depends(get_profile_service)
-):
-    """
-    Obtener todos los perfiles (paginado).
-
-    Parámetros:
-    - skip: Número de perfiles a omitir (default: 0)
-    - limit: Número máximo de perfiles a retornar (default: 100, max: 100)
-    """
-    try:
-        if limit > 100:
-            limit = 100
-
-        profiles = await profile_service.get_all_profiles(skip, limit)
-        return [ProfileResponse(**profile.model_dump()) for profile in profiles]
-
-    except Exception as e:
-        logger.error(f"Error getting all profiles: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get profiles"
-        )
-

@@ -22,15 +22,18 @@
   "dependencies": {
     "@types/express": "^5.0.5",
     "@types/node": "^24.9.2",
+    "@types/nodemailer": "^7.0.3",
     "amqplib": "^0.10.9",
     "body-parser": "^2.2.0",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "nodemailer": "^7.0.10",
     "prom-client": "^15.1.0",
     "redis": "^5.9.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "uuid": "^9.0.1"
+    "uuid": "^9.0.1",
+    "winston": "^3.18.3"
   },
   "devDependencies": {
     "@types/amqplib": "^0.10.8",
@@ -62,5 +65,6 @@
     },
     "setupFilesAfterEnv": ["<rootDir>/tests/setup.ts"],
     "testTimeout": 30000
+    "@types/winston": "^2.4.4"
   }
 }

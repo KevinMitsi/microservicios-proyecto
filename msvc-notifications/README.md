@@ -36,6 +36,7 @@ msvc-notifications/
 - **Redis**: Almacenamiento temporal de notificaciones con TTL de 30 días
 - **RabbitMQ**: Consumo de eventos de otros microservicios
 - **Exchange Topic**: Escucha eventos con patrones: `user.*`, `profile.*`, `auth.*`, `system.*`
+- **Email Notifications**: Envío automático de correos electrónicos en eventos de usuario
 - **Health Checks**: Endpoints de salud para monitoreo
 - **Reconexión Automática**: Manejo de desconexiones de Redis y RabbitMQ
 - **TypeScript**: Código tipado y seguro
@@ -61,11 +62,35 @@ cp .env.example .env
 
 Editar `.env` con tus configuraciones:
 ```env
-PORT=3002
+PORT=4000
 REDIS_URL=redis://localhost:6379
 RABBITMQ_URL=amqp://admin:admin@localhost:5672
 NODE_ENV=development
+
+# Email Configuration
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASSWORD=your-app-password
+EMAIL_FROM=noreply@yourdomain.com
+FRONTEND_URL=http://localhost:3000
 ```
+
+### Configuración de Email
+
+El servicio de notificaciones puede enviar correos electrónicos automáticos. Para habilitar esta funcionalidad:
+
+1. **Gmail** (Recomendado para desarrollo):
+   - Habilita la verificación en dos pasos en tu cuenta de Google
+   - Genera una "App Password" en https://myaccount.google.com/apppasswords
+   - Usa esta contraseña en `EMAIL_PASSWORD`
+
+2. **Otros proveedores**:
+   - Outlook: `smtp-mail.outlook.com:587`
+   - Yahoo: `smtp.mail.yahoo.com:587`
+   - SendGrid: `smtp.sendgrid.net:587`
+
+**Nota**: Si no configuras las credenciales de email, el servicio funcionará normalmente pero sin enviar correos (mostrará advertencias en logs).
 
 3. Compilar TypeScript:
 ```bash

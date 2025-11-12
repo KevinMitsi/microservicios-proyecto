@@ -40,7 +40,12 @@ async function main() {
   });
 
   try {
+    // Esperar un poco antes de empezar para dar tiempo a RabbitMQ
+    console.log('⏳ Esperando 5 segundos para asegurar que los servicios estén listos...');
+    await new Promise(resolve => setTimeout(resolve, 5000));
+
     // Conectar a los servicios
+    console.log('🔌 Conectando a RabbitMQ...');
     const connected = await processor.connect();
 
     if (!connected) {

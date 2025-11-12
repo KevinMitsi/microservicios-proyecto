@@ -24,6 +24,10 @@ jwt:
   issuer: msvc-auth
   expiration-minutes: 60
 
+rabbitmq:
+  log:
+    queue: ${RABBITMQ_LOG_QUEUE:log_queue}
+
 
 
 server:
@@ -42,9 +46,10 @@ management:
     prometheus:
       enabled: true
   metrics:
-    export:
-      prometheus:
-        enabled: true
     tags:
       application: ${spring.application.name}
       environment: development
+  prometheus:
+    metrics:
+      export:
+        enabled: true

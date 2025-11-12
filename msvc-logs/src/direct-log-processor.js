@@ -17,28 +17,42 @@ class DirectLogProcessor {
   }
 
   async connect() {
-    try {
-      console.log('🔌 Conectando a RabbitMQ...');
-      this.connection = await amqp.connect(this.rabbitmqUrl);
-      this.channel = await this.connection.createChannel();
+    const maxRetries = 10;
+    const initialDelay = 2000; // 2 segundos
 
-      // Configurar la cola
-      await this.channel.assertQueue(this.queueName, { durable: true });
-
-      console.log('🔌 Verificando conectividad con FluentBit...');
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        await axios.get(this.fluentbitUrl.replace('9880', '2020')); // Health check en puerto 2020
-        console.log('✅ FluentBit está disponible');
-      } catch (error) {
-        console.warn('⚠️  FluentBit puede no estar disponible, pero continuando...');
-      }
+        console.log(`🔌 Intento ${attempt}/${maxRetries} - Conectando a RabbitMQ...`);
+        this.connection = await amqp.connect(this.rabbitmqUrl);
+        this.channel = await this.connection.createChannel();
 
-      console.log('✅ Conexiones establecidas exitosamente');
-      return true;
-    } catch (error) {
-      console.error('❌ Error conectando:', error.message);
-      return false;
+        // Configurar la cola
+        await this.channel.assertQueue(this.queueName, { durable: true });
+
+        console.log('🔌 Verificando conectividad con FluentBit...');
+        try {
+          await axios.get(this.fluentbitUrl.replace('9880', '2020')); // Health check en puerto 2020
+          console.log('✅ FluentBit está disponible');
+        } catch (error) {
+          console.warn('⚠️  FluentBit puede no estar disponible, pero continuando...');
+        }
+
+        console.log('✅ Conexiones establecidas exitosamente');
+        return true;
+      } catch (error) {
+        console.error(`❌ Error en intento ${attempt}/${maxRetries}:`, error.message);
+
+        if (attempt < maxRetries) {
+          const delay = initialDelay * Math.pow(1.5, attempt - 1);
+          console.log(`⏳ Esperando ${Math.round(delay/1000)}s antes de reintentar...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error('❌ No se pudo conectar después de todos los intentos');
+          return false;
+        }
+      }
     }
+    return false;
   }
 
   async startProcessing() {

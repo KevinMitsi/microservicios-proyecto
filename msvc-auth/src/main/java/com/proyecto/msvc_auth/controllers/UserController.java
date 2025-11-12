@@ -8,6 +8,7 @@ import com.proyecto.msvc_auth.Entity.Role;
 import com.proyecto.msvc_auth.Entity.UserEntity;
 
 import com.proyecto.msvc_auth.services.UserService;
+import com.proyecto.msvc_auth.util.RabbitMQLogger;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -22,14 +23,20 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.*;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/auth")
 @RequiredArgsConstructor
 public class UserController {
     private final UserService userService;
+    private final RabbitMQLogger rabbitMQLogger;
 
     @PostMapping("/users")
     public ResponseEntity<UserEntity> registerUser(@RequestBody UserRegistrationRequest request) {
+        rabbitMQLogger.info("Registering new user: " + request.getEmail());
         UserEntity createdUser = userService.registerUser(request);
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("userId", createdUser.getId());
+        meta.put("email", createdUser.getEmail());
+        rabbitMQLogger.info("User registered successfully", meta);
         return new ResponseEntity<>(createdUser, HttpStatus.CREATED);
     }
 
@@ -59,6 +66,9 @@ public class UserController {
 
     @PutMapping("/users/{id}")
     public ResponseEntity<UserEntity> updateUser(@PathVariable Long id, @RequestBody UserUpdateRequest updateRequest) {
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("userId", id);
+        rabbitMQLogger.info("Updating user", meta);
         Optional<UserEntity> userOpt = userService.getUserById(id);
         // No lógica ni throws, solo respuesta directa
         return userOpt.map(user -> ResponseEntity.ok(userService.updateUser(id, updateRequest)))
@@ -67,6 +77,9 @@ public class UserController {
 
     @DeleteMapping("/users/{id}")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("userId", id);
+        rabbitMQLogger.info("Deleting user", meta);
         Optional<UserEntity> userOpt = userService.getUserById(id);
         // No lógica ni throws, solo respuesta directa
         if (userOpt.isPresent()) {
@@ -76,18 +89,25 @@ public class UserController {
         return ResponseEntity.notFound().build();
     }
 
-    @PostMapping("/auth/login")
+    @PostMapping("/login")
     public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest loginRequest) {
+        rabbitMQLogger.info("User login attempt: " + loginRequest.getUsername());
         AuthResponse authResponse = userService.login(loginRequest);
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("username", loginRequest.getUsername());
+        rabbitMQLogger.info("User logged in successfully", meta);
         return ResponseEntity.ok(authResponse);
     }
 
-    @PostMapping("/auth/tokens")
+    @PostMapping("/tokens")
     public ResponseEntity<Map<String, String>> requestPasswordRecovery(@RequestBody Map<String, String> request) {
         String email = request.get("email");
         if (email == null || email.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "El email es obligatorio");
         }
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("email", email);
+        rabbitMQLogger.info("Password recovery requested", meta);
         userService.requestPasswordRecovery(email);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Se ha enviado un correo con instrucciones para restablecer la contraseña");
@@ -101,6 +121,9 @@ public class UserController {
         if (token == null || token.isEmpty() || newPassword == null || newPassword.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Token y nueva contraseña son obligatorios");
         }
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("userId", id);
+        rabbitMQLogger.info("Password reset", meta);
         userService.resetPasswordForUser(id, token, newPassword);
         Map<String, String> response = new HashMap<>();
         response.put("message", "Contraseña restablecida correctamente");
@@ -110,6 +133,10 @@ public class UserController {
     @PutMapping("/users/{id}/roles")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<UserEntity> updateUserRoles(@PathVariable Long id, @RequestBody Set<Role> roles) {
+        Map<String, Object> meta = new HashMap<>();
+        meta.put("userId", id);
+        meta.put("roles", roles);
+        rabbitMQLogger.info("User roles updated", meta);
         UserEntity updatedUser = userService.updateUserRoles(id, roles);
         return ResponseEntity.ok(updatedUser);
     }

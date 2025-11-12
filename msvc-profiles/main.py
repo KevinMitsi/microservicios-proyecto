@@ -30,10 +30,15 @@ async def lifespan(app: FastAPI):
     try:
         rabbitmq_service.connect()
 
-        # Start consumer thread
+        # Start consumer thread - pasar el loop principal
         db = get_database()
         profile_service = ProfileService(db)
-        start_consumer_thread(profile_service)
+
+        # Obtener el loop principal actual
+        import asyncio
+        main_loop = asyncio.get_running_loop()
+
+        start_consumer_thread(profile_service, main_loop)
 
     except Exception as e:
         logger.error(f"⚠️ Failed to connect to RabbitMQ: {e}")
@@ -44,8 +49,22 @@ async def lifespan(app: FastAPI):
 
     # Shutdown
     logger.info("🛑 Shutting down msvc-profiles application...")
-    await close_mongo_connection()
-    rabbitmq_service.close()
+
+    # Close RabbitMQ first
+    try:
+        rabbitmq_service.close()
+    except Exception as e:
+        logger.error(f"⚠️ Error closing RabbitMQ: {e}")
+
+    # Close MongoDB connection
+    try:
+        result = close_mongo_connection()
+        # Si close_mongo_connection es async, usar await
+        if result is not None and hasattr(result, '__await__'):
+            await result
+    except Exception as e:
+        logger.error(f"⚠️ Error closing MongoDB: {e}")
+
     logger.info("✅ Application shutdown complete")
 
 
@@ -83,12 +102,12 @@ async def root():
         "version": settings.app_version,
         "description": "Microservicio de gestión de perfiles de usuario",
         "endpoints": {
-            "health": "/health",
-            "live": "/health/live",
-            "ready": "/health/ready",
-            "docs": "/docs",
-            "profiles": "/api/profiles",
-            "metrics": "/metrics"
+            "health": "/api/profiles/health",
+            "live": "/api/profiles/health/live",
+            "ready": "/api/profiles/health/ready",
+            "docs": "/api/profiles/docs",
+            "profiles": "/api/profiles/profiles",
+            "metrics": "/api/profiles/metrics"
         }
     }
 

@@ -15,7 +15,7 @@ def decode_token(token: str) -> dict:
         payload = jwt.decode(
             token,
             settings.jwt_secret,
-            algorithms=[settings.jwt_algorithm],
+            algorithms=["HS384"],
             options={"verify_signature": True, "verify_aud": False}
         )
         return payload
@@ -28,15 +28,15 @@ def decode_token(token: str) -> dict:
         )
 
 
-async def get_current_user(
+def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security)
 ) -> dict:
     """Obtener el usuario actual desde el token JWT"""
     token = credentials.credentials
     payload = decode_token(token)
 
-    user_id = payload.get("sub")
-    username = payload.get("username")
+    user_id = payload.get("userId")
+    username = payload.get("sub")
 
     if user_id is None:
         raise HTTPException(
@@ -50,4 +50,3 @@ async def get_current_user(
         "username": username,
         "roles": payload.get("roles", [])
     }
-
