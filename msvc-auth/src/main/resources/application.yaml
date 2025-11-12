@@ -24,6 +24,10 @@ jwt:
   issuer: msvc-auth
   expiration-minutes: 60
 
+rabbitmq:
+  log:
+    queue: ${RABBITMQ_LOG_QUEUE:log_queue}
+
 
 
 server:

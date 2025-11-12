@@ -62,6 +62,44 @@ Las pruebas verifican que:
 - Los índices se crean automáticamente con formato `logs-YYYY.MM.dd`
 - Los metadatos complejos se preservan íntegramente
 
+## 📝 Logging Centralizado
+
+Todos los microservicios están integrados con el sistema de logging centralizado:
+
+- ✅ **msvc-auth** (Java/Spring Boot) - Logger con RabbitMQ
+- ✅ **msvc-gateway** (Node.js/TypeScript) - Logger con RabbitMQ
+- ✅ **msvc-profiles** (Python/FastAPI) - Logger con RabbitMQ
+- ✅ **msvc-notifications** (Node.js/TypeScript) - Logger con RabbitMQ
+
+### Flujo de Logs
+```
+Microservicio → RabbitMQ → Direct Processor → FluentBit → OpenSearch → Dashboards
+```
+
+### Probar el Sistema de Logs
+
+**Windows (PowerShell):**
+```powershell
+.\scripts\test-logging.ps1
+```
+
+**Linux/Mac:**
+```bash
+./scripts/test-logging.sh
+```
+
+### Visualizar Logs
+- **OpenSearch Dashboards**: http://localhost:5601
+  - Crear index pattern: `logs-*`
+  - Filtrar por servicio, nivel, timestamp, etc.
+- **RabbitMQ Management**: http://localhost:15672
+  - Ver cola `log_queue` y tasa de mensajes
+
+### Documentación de Logging
+- [Guía de Integración](docs/LOGGING-INTEGRATION.md) - Cómo usar los loggers en cada microservicio
+- [Resumen de Implementación](docs/LOGS-IMPLEMENTATION-SUMMARY.md) - Pasos de despliegue y verificación
+- [Agregar Logging a Nuevos Servicios](docs/AGREGAR-SERVICIO-LOGS.md) - Guía paso a paso
+
 ## Inicio Rápido
 
 ### Prerrequisitos
