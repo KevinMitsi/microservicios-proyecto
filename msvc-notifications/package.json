@@ -64,7 +64,7 @@
       "^@/(.*)$": "<rootDir>/src/$1"
     },
     "setupFilesAfterEnv": ["<rootDir>/tests/setup.ts"],
-    "testTimeout": 30000
+    "testTimeout": 30000,
     "@types/winston": "^2.4.4"
   }
 }
