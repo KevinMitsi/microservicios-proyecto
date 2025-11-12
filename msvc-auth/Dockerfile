@@ -1,6 +1,3 @@
-# =======================
-# Etapa 1: Construcción (Builder)
-# =======================
 FROM gradle:8.5.0-jdk21 AS builder
 
 WORKDIR /app
@@ -28,18 +25,11 @@ FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
 
-# Instalar el cliente de PostgreSQL para el script de espera
-RUN apk add --no-cache postgresql-client
-
-# Copiamos el script de espera
-COPY wait-for-db.sh /usr/local/bin/wait-for-db.sh
-RUN chmod +x /usr/local/bin/wait-for-db.sh
-
 # Copiamos el jar generado desde la etapa builder
 COPY --from=builder /app/build/libs/*.jar app.jar
 
 # Exponemos el puerto de Spring Boot
 EXPOSE 8081
 
-# Comando de ejecución con espera
-ENTRYPOINT ["wait-for-db.sh", "db-auth", "java", "-jar", "app.jar"]
+# Comando de ejecución
+ENTRYPOINT ["java", "-jar", "app.jar"]
