@@ -144,7 +144,7 @@ services:
 
   msvc-auth:
     container_name: msvc-auth
-    restart: on-failure
+    restart: always
     build: ./msvc-auth
     ports:
       - "8081:8081"
@@ -156,10 +156,8 @@ services:
       - POSTGRES_PASSWORD=authpass
       - POSTGRES_DB=authdb
     depends_on:
-      rabbitmq:
-        condition: service_healthy
-      db-auth:
-        condition: service_healthy
+        - rabbitmq
+        - db-auth
     networks:
       - microservices-net
 

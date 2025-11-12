@@ -39,7 +39,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Rutas health y autenticación públicas
                         .requestMatchers("/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET,"/api/health/**").permitAll()
+                        .requestMatchers(HttpMethod.GET,"/api/auth/health/**").permitAll()
                         .requestMatchers("/api/auth/tokens").permitAll()
                         .requestMatchers("/api/auth/password-recovery").permitAll()
                         .requestMatchers("/api/auth/password-reset").permitAll()
