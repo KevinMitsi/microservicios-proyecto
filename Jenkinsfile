@@ -37,28 +37,79 @@ pipeline {
               sh 'npm test'
             }
           }
+          post {
+            always {
+              publishHTML([
+                allowMissing: false,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'msvc-logs/coverage',
+                reportFiles: 'index.html',
+                reportName: 'Logs Coverage Report'
+              ])
+            }
+          }
         }
         stage('msvc-auth - Gradle tests') {
           steps {
             dir('msvc-auth') {
-              sh './gradlew test --no-daemon'
+              sh './gradlew clean test --no-daemon'
+            }
+          }
+          post {
+            always {
+              junit testResults: 'msvc-auth/build/test-results/test/*.xml', allowEmptyResults: true
+              publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'msvc-auth/build/reports/tests/test',
+                reportFiles: 'index.html',
+                reportName: 'Auth Test Report'
+              ])
             }
           }
         }
-        stage('msvc-notifications - Build TypeScript') {
+        stage('msvc-notifications - TypeScript tests') {
           steps {
             dir('msvc-notifications') {
               sh 'if [ -f package-lock.json ]; then npm ci; else npm install; fi'
               sh 'npm run build'
+              sh 'npm test'
+            }
+          }
+          post {
+            always {
+              publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'msvc-notifications/coverage',
+                reportFiles: 'index.html',
+                reportName: 'Notifications Coverage Report'
+              ])
             }
           }
         }
-        stage('msvc-profiles - deps') {
+        stage('msvc-profiles - Python tests') {
           steps {
             dir('msvc-profiles') {
               sh 'python3 -m pip install --upgrade pip'
               sh 'python3 -m pip install -r requirements.txt'
-              sh 'python3 -m py_compile main.py || true'
+              sh 'python3 -m pytest tests/ -v --cov=app --cov-report=xml --cov-report=html --junit-xml=test-results.xml'
+            }
+          }
+          post {
+            always {
+              junit testResults: 'msvc-profiles/test-results.xml', allowEmptyResults: true
+              publishHTML([
+                allowMissing: true,
+                alwaysLinkToLastBuild: true,
+                keepAll: true,
+                reportDir: 'msvc-profiles/coverage_html',
+                reportFiles: 'index.html',
+                reportName: 'Profiles Coverage Report'
+              ])
             }
           }
         }
@@ -82,15 +133,22 @@ pipeline {
   }
   post {
     always {
+      // Archivar reportes de cobertura
       archiveArtifacts artifacts: 'msvc-logs/coverage/**', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'msvc-notifications/coverage/**', allowEmptyArchive: true
+      archiveArtifacts artifacts: 'msvc-profiles/coverage_html/**', allowEmptyArchive: true
+
+      // Reportes JUnit consolidados
       junit testResults: 'msvc-auth/build/test-results/test/*.xml', allowEmptyResults: true
+      junit testResults: 'msvc-profiles/test-results.xml', allowEmptyResults: true
+
       sh 'docker image prune -f || true'
     }
     success {
-      echo 'Pipeline finalizado correctamente.'
+      echo 'Pipeline finalizado correctamente. Todos los tests pasaron.'
     }
     failure {
-      echo 'Pipeline falló. Revise los logs de las etapas.'
+      echo 'Pipeline falló. Revise los logs de las etapas de testing.'
     }
   }
 }
